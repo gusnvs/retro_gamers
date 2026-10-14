@@ -1,0 +1,205 @@
+/* index_home__header* / LogoShape / LogoTagLine / SlideShow / Slide (reference) */
+.header {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: calc(var(--vh, 1vh) * 100);
+  padding-top: 7.5rem;
+  justify-content: flex-end;
+  width: 100%;
+  color: var(--black);
+}
+.inner {
+  position: relative;
+  display: flex;
+  height: 100%;
+  width: 100%;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+  z-index: 20;
+}
+.logoShape {
+  width: 100vw;
+  height: 25vw;
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 0;
+  pointer-events: none;
+  margin: 0;
+  font-weight: inherit;
+}
+.wordmark {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.retro {
+  font-family: var(--font-base);
+  font-weight: 800;
+  font-size: 282px;
+  letter-spacing: -0.04em;
+  fill: var(--black);
+}
+.gamers {
+  font-family: var(--font-script);
+  font-size: 262px;
+  fill: var(--black);
+  stroke: var(--black);
+  stroke-width: 15px;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  paint-order: stroke;
+}
+.svgTagline {
+  display: none;
+  font-family: var(--font-base);
+  font-weight: 800;
+  font-size: 16.5px;
+  letter-spacing: -0.06em;
+  fill: var(--black);
+}
+.taglineWrapper {
+  position: absolute;
+  top: 22vw;
+  left: 5.2vw;
+  z-index: 200;
+}
+.tagline {
+  font-size: 1.05rem;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.slideshow {
+  position: absolute;
+  top: -7.5rem;
+  left: 0;
+  width: 100%;
+  height: calc(100% + 7.5rem);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+.slide {
+  width: 90vw;
+  height: 90vw;
+  cursor: pointer;
+}
+.footer {
+  position: absolute;
+  bottom: 5rem;
+  left: 0;
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  padding: 0 5rem;
+  align-items: flex-end;
+}
+.footer > div {
+  width: 33%;
+}
+.footer > div:nth-child(2) {
+  display: flex;
+  justify-content: center;
+}
+.footer > div:last-child {
+  display: flex;
+  justify-content: flex-end;
+}
+.dna {
+  width: 5.2rem;
+  height: 2.2rem;
+  display: block;
+}
+.arrow {
+  width: 2.1rem;
+  height: 2.1rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: currentColor;
+  cursor: pointer;
+  animation: bob 2.4s var(--ease-out-cubic) infinite;
+}
+.arrow svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+@keyframes bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(0.6rem);
+  }
+}
+.copy {
+  font-size: 1.1rem;
+  line-height: 1.1;
+  letter-spacing: -0.04em;
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  display: flex;
+  flex-direction: row-reverse;
+}
+
+@media only screen and (min-width: 768px) {
+  .slide {
+    width: 50vw;
+    height: 50vw;
+  }
+}
+@media only screen and (min-width: 1025px) {
+  .header {
+    padding-top: 13rem;
+  }
+  .logoShape {
+    top: -10%;
+  }
+  .svgTagline {
+    display: inline;
+  }
+  .taglineWrapper {
+    display: none;
+  }
+  .tagline {
+    font-size: 1.45rem;
+  }
+  .slide {
+    width: 35vw;
+    height: 35vw;
+  }
+  .dna {
+    width: 8.4rem;
+    height: 3.6rem;
+  }
+  .arrow {
+    width: 3.6rem;
+    height: 3.6rem;
+  }
+  .footer > div:last-child {
+    transform: translateX(100%);
+  }
+  .copy {
+    display: none;
+  }
+}
+@media only screen and (min-width: 1200px) {
+  .slide {
+    width: min(50vw, 600px);
+    height: min(50vw, 600px);
+  }
+}
+@media screen and (max-height: 750px) {
+  .slide {
+    max-height: 50vh;
+    max-width: 50vh;
+  }
+}

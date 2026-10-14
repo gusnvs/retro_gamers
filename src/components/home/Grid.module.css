@@ -1,0 +1,207 @@
+/* HomeGrid / GridItem (reference) */
+.grid {
+  display: flex;
+  flex-wrap: wrap;
+  box-shadow: -1px -1px 0 0 var(--line);
+  overflow: visible;
+}
+.cell {
+  display: block;
+  width: 100%;
+  box-shadow: 1px 1px 0 0 var(--line);
+  position: relative;
+}
+.cell:hover,
+.cell:focus-within {
+  z-index: 2;
+}
+.item {
+  display: block;
+  position: relative;
+}
+.intrinsic {
+  position: relative;
+  width: 100%;
+  height: 0;
+  padding-top: 100%;
+}
+.inner {
+  position: absolute;
+  display: flex;
+  inset: 0;
+  overflow: hidden;
+}
+.device {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 75%;
+  height: 75%;
+  pointer-events: none;
+}
+.label {
+  font-size: 1.3rem;
+  line-height: 1.16;
+  position: absolute;
+  bottom: 1.8rem;
+  left: 2.2rem;
+  color: var(--black);
+  z-index: 2;
+}
+.anno {
+  font-size: 0.8rem;
+  letter-spacing: -0.05em;
+  font-weight: 800;
+  vertical-align: top;
+}
+.badge {
+  position: absolute;
+  bottom: 1.8rem;
+  right: 2.2rem;
+  height: 1.7rem;
+  min-width: 2.7rem;
+  padding: 0 0.5rem;
+  border-radius: 1rem;
+  background: var(--black);
+  color: var(--brand);
+  font-size: 0.9rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+}
+
+/* hover circle: overflows the card like the reference */
+.hover {
+  position: absolute;
+  inset: -12%;
+  pointer-events: none;
+  clip-path: circle(0% at 50% 50%);
+  z-index: 3;
+}
+.hoverBg {
+  position: absolute;
+  inset: 0;
+  background: var(--c);
+}
+.hoverCard {
+  position: absolute;
+  inset: calc(12% / 1.24);
+  inset: 9.6774%;
+  color: var(--ink);
+}
+.hoverCard .label {
+  color: var(--ink);
+}
+.hoverCard .badge {
+  background: var(--ink);
+  color: var(--c);
+}
+.marquee {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 100%;
+  transform: translateY(-50%);
+  font-size: 4.8rem;
+  line-height: 0.8;
+  letter-spacing: -0.07em;
+  color: var(--ink);
+  overflow: hidden;
+}
+.marqueeInner {
+  display: flex;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+  width: max-content;
+  animation: marquee 9s linear infinite;
+}
+.marqueeInner p {
+  padding-right: 5rem;
+}
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+/* FilteredListItem variant (Loja page): dark tile, brand label, faint border */
+.list .inner {
+  background: var(--black);
+  border: 0.5px solid rgba(var(--brand-rgb), 0.1);
+}
+.list .label {
+  color: var(--brand);
+}
+.list .badge {
+  background: var(--brand);
+  color: var(--black);
+}
+.list .device {
+  width: calc(100% - 4.4rem);
+  height: calc(100% - 4.4rem);
+}
+
+@media only screen and (min-width: 768px) {
+  .cell {
+    width: 50%;
+  }
+  .marquee {
+    font-size: 8rem;
+    letter-spacing: -0.01em;
+  }
+}
+@media only screen and (min-width: 1025px) {
+  .cell {
+    width: 33.33%;
+  }
+  .label {
+    bottom: 3.2rem;
+    left: 3.5rem;
+  }
+  .badge {
+    height: 2.5rem;
+    right: 3.6rem;
+    bottom: 2.7rem;
+    min-width: 3.5rem;
+    font-size: 1.1rem;
+    border-radius: 2rem;
+  }
+  .marquee {
+    font-size: 7.95rem;
+    letter-spacing: -0.05em;
+  }
+  .list .device {
+    width: calc(100% - 7rem);
+    height: calc(100% - 7rem);
+  }
+}
+@media only screen and (min-width: 1200px) {
+  .label {
+    font-size: 1.6rem;
+    line-height: 1.06;
+    letter-spacing: -0.02em;
+  }
+  .marquee {
+    font-size: 7.2rem;
+  }
+}
+@media (hover: none) {
+  /* mobile reference shows the colour panel permanently */
+  .hover {
+    clip-path: none !important;
+    inset: 0;
+  }
+  .hoverCard {
+    inset: 0;
+  }
+  .marquee {
+    opacity: 0.9;
+  }
+}

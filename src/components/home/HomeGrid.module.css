@@ -1,0 +1,62 @@
+/* index_home__grid / index_grid--copyblock / HeaderText (reference) */
+.section {
+  position: relative;
+  width: 100%;
+  padding: 0 3rem 10rem;
+  background: var(--brand);
+  color: var(--black);
+}
+.copyblock {
+  display: flex;
+  gap: 4.6rem;
+  margin-bottom: 7.5rem;
+  padding-top: 12rem;
+}
+.titlewrapper {
+  position: relative;
+  width: 100%;
+}
+.subtitle {
+  text-transform: uppercase;
+  width: fit-content;
+  position: absolute;
+  font-size: 1.3rem;
+  line-height: 1.16;
+}
+.title {
+  font-size: 2rem;
+  letter-spacing: -0.05em;
+  line-height: 0.83;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+.title > :global(.line):first-child {
+  margin-top: -0.25em;
+}
+
+@media only screen and (min-width: 1025px) {
+  .section {
+    padding: 13rem 14.1rem 10rem;
+  }
+}
+@media only screen and (min-width: 1200px) {
+  .copyblock {
+    flex-direction: row;
+    padding-top: 0;
+    gap: 12rem;
+    margin-bottom: 18.4rem;
+  }
+  .subtitle {
+    font-size: 1.6rem;
+    line-height: 1.06;
+    letter-spacing: -0.02em;
+  }
+  .title {
+    font-size: 7.2rem;
+  }
+}
+@media only screen and (min-width: 1700px) {
+  .section {
+    padding: 13rem 20.7rem 10rem;
+  }
+}

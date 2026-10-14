@@ -1,0 +1,25 @@
+.loader {
+  font-size: 2rem;
+  letter-spacing: -0.05em;
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100dvh;
+  overflow: hidden;
+  background: var(--black);
+  color: var(--brand);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 99999;
+  pointer-events: none;
+}
+.logo {
+  position: absolute;
+  top: 52%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 15rem;
+  height: auto;
+  overflow: visible;
+}

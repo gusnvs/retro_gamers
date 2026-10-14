@@ -1,0 +1,65 @@
+{
+  "playstation": {
+    "columns": 4,
+    "rows": 4,
+    "displacementStrength": 2.14,
+    "cell": 1024,
+    "v": "mv8r66fu"
+  },
+  "xbox": {
+    "columns": 4,
+    "rows": 4,
+    "displacementStrength": 2.07,
+    "cell": 1024,
+    "v": "mv8r675r"
+  },
+  "switch": {
+    "columns": 4,
+    "rows": 4,
+    "displacementStrength": 1.22,
+    "cell": 1024,
+    "v": "mv8r66tl"
+  },
+  "logo": {
+    "columns": 4,
+    "rows": 4,
+    "displacementStrength": 1.51,
+    "cell": 1024,
+    "v": "mv8r67ge"
+  },
+  "handheld": {
+    "columns": 4,
+    "rows": 4,
+    "displacementStrength": 1.19,
+    "cell": 1024,
+    "v": "mv8r67uh"
+  },
+  "cartridge": {
+    "columns": 4,
+    "rows": 4,
+    "displacementStrength": 1.66,
+    "cell": 1024,
+    "v": "mv8r685j"
+  },
+  "joystick": {
+    "columns": 4,
+    "rows": 4,
+    "displacementStrength": 2.08,
+    "cell": 1024,
+    "v": "mv8r68fb"
+  },
+  "crt": {
+    "columns": 4,
+    "rows": 4,
+    "displacementStrength": 2.31,
+    "cell": 1024,
+    "v": "mv8r68r7"
+  },
+  "headset": {
+    "columns": 4,
+    "rows": 4,
+    "displacementStrength": 1.72,
+    "cell": 1024,
+    "v": "mv8r693v"
+  }
+}

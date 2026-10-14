@@ -1,0 +1,65 @@
+.dna {
+  overflow: visible;
+  fill: currentColor;
+}
+.dna g {
+  animation: collapse 4.8s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+  transform-box: view-box;
+  transform-origin: 12px 18px;
+}
+.a,
+.b {
+  animation: wave 4.8s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+  animation-delay: calc(var(--i) * 0.06s);
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.b {
+  animation-name: waveB;
+}
+/* the column of dots collapses into a ':' (two dots) and expands into a wave */
+@keyframes collapse {
+  0%,
+  35% {
+    transform: translateX(calc((25 - var(--i) * 10) * 1px));
+  }
+  50%,
+  85% {
+    transform: none;
+  }
+  100% {
+    transform: translateX(calc((25 - var(--i) * 10) * 1px));
+  }
+}
+@keyframes wave {
+  0%,
+  45% {
+    transform: none;
+  }
+  60% {
+    transform: translateY(6px);
+  }
+  75% {
+    transform: translateY(-4px);
+  }
+  90%,
+  100% {
+    transform: none;
+  }
+}
+@keyframes waveB {
+  0%,
+  45% {
+    transform: none;
+  }
+  60% {
+    transform: translateY(-6px);
+  }
+  75% {
+    transform: translateY(4px);
+  }
+  90%,
+  100% {
+    transform: none;
+  }
+}
