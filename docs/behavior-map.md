@@ -23,7 +23,7 @@ Formato: elemento — gatilho → estado resultante (referência → implementa�
 - **Seta ↓** — bob contínuo; clique rola 1 viewport (Lenis 1.4s).
 - **Reel** — cenas de 3.2s; cenas alternam entre moldura inset (10.9%/7.5%) com fundo desfocado e tela cheia; moldura com parallax de mouse.
 - **"Quem somos"** — linhas sobem com stagger .07s ao entrar na viewport.
-- **Card do grid** — hover → círculo da cor do card (47% de uma camada 124%, transborda o card) segue o ponteiro com atraso; dentro: marquee contínuo e label/badge recoloridos. Clique → `/loja?categoria=…`. Em telas sem hover o painel colorido fica visível.
+- **Card do grid** — hover → círculo da cor do card (47% de uma camada 124%, transborda o card) segue o ponteiro com atraso; dentro: marquee contínuo e label/badge recoloridos. Clique → transição de cena para `/loja/[slug]`. Em telas sem hover o painel colorido fica visível.
 
 ## Loja
 - Filtros → `router.replace('/loja?categoria=x')`, sublinhado anima da direita/esquerda (.75s), grid refaz entrada com stagger.
@@ -31,3 +31,22 @@ Formato: elemento — gatilho → estado resultante (referência → implementa�
 ## Contato
 - Validação no submit: obrigatórios (nome, e-mail, mensagem) e formato de e-mail; estados error → loading (0.9s) → success. **Nenhum dado é enviado** (sem backend). `?assunto=` pré-preenche o assunto (vindo dos cards da Loja).
 - Newsletter: valida o e-mail localmente; não envia.
+
+## Rastro do mouse (pixelado) — `src/lib/trail.ts`, `src/components/TrailOverlay.tsx`
+Referência (OBSERVADO nos shaders `DrawShader`, `GLUIShapeBridgeShader`, `GLUITextBridgeShader`, `splatShader`): um buffer `tDraw` (R = rastro do ponteiro com decaimento ×0.94/frame, G = densidade de fluido) é lido por todos os elementos; formas trocam `uColor→uColor2` onde `fluid*2 > 0.5`, textos ficam arco-íris (> 0.5) e brancos (> 0.8–1.0).
+Implementação (pedido: pixelado em vez de pincel): campo em grade de células (~16px), splat por segmento com queda `1 − cubicOut` (igual ao `splatShader`), decaimento 0.955 + difusão para o espalhamento de fluido, ruído nas bordas a 12 fps.
+- Fundo da marca (hero, "Quem somos", contato, footers claros): núcleo → fundo preto e texto branco; franja → fundo preto e texto arco-íris (`backdrop-filter`).
+- Fundos escuros (footer da home, Loja, Sobre): `difference` com a cor da marca (escuro → azul, texto azul → preto).
+- Cards do grid: o rastro revela a cor do card e o marquee (mesma camada do hover, recortada pelas células).
+- Reel: interferência de TV antiga — faixas do vídeo deslocadas (tearing) + estática granulada.
+- Objetos 3D: o campo alimenta `tDraw` do shader (pixelização/matiz na tela do aparelho), como na referência.
+- Desligado em telas touch e com `prefers-reduced-motion`.
+
+## Transição card → página de detalhe — `src/gl/sceneTransition.ts`, `src/lib/sceneNav.ts`
+Referência (OBSERVADO: `SceneTransition.fs`, `RootScene.navigate`, `TR_DURATION = 2600`): `uTransition 0→1` em 2,6 s easeInOutCubic, `uBlur 1→1.3` e `uSize2 .35→−.2` easeOutCubic; grade de pontos (`uZoom 23`) + círculo crescente centrados no clique, borda arco-íris; cena antiga ampliada (×2,2) e girada; cena nova de 0,6×→1×.
+Implementação: shader portado 1:1 num quad de tela cheia; a cena nova é desenhada num canvas (fundo na cor do item + título gigante na posição do hero de detalhe); a página antiga (DOM) recebe a ampliação/rotação por CSS a partir do ponto do clique; a rota troca quando a máscara cobre a tela (~1,5 s) e o quad sai com fade de 0,3 s. Medido: pontos aparecem em ~1,15 s (ref. 1,146 s), campo de pontos em ~1,44 s (ref. 1,40 s).
+- Também é usada nos cards da Loja e no footer "próximo item" das páginas de detalhe.
+- Primeira carga: o loader entrega para o mesmo shader em modo `uFirst` (preto fora da máscara, esfera de pontos centrada). Duração usada 1,7 s (INFERIDO: as capturas da referência mostram a página em < 0,7 s após a esfera, mais curto que os 3,9 s do código).
+
+## Páginas de detalhe — `/loja/[slug]`
+Estrutura da referência `/projects/[slug]`: hero 100vh na cor primária com marquee 29rem na cor secundária, objeto 3D min(55vw, 800px), barra Categoria/Desde; reel; título com 1ª linha recuada; linhas Categoria / Desde / Na loja / Sobre; CTA com barra grossa; galeria `DetailMedia` (blocos retrato 49,87% e paisagem 100%, padding 5,2083vw 9,375vw, fundo na cor secundária); footer do próximo item nas cores dele. Header usa a cor terciária, sem blend, com seta "voltar para a loja" e o logo.

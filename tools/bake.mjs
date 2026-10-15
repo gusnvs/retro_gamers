@@ -1,6 +1,7 @@
 // Bakes the procedural models into motion-vector sheets under public/assets/mv.
 // Usage: node tools/bake.mjs [model ...]   (needs a Chrome with --remote-debugging-port=9222,
 //        or set BAKE_LAUNCH=1 to launch a local Chromium through Playwright)
+// Previews: BAKE_OUT=<dir> writes there instead of public/assets/mv, BAKE_CELL=512 bakes smaller cells.
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -8,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const outDir = path.join(root, 'public', 'assets', 'mv');
+const outDir = process.env.BAKE_OUT ? path.resolve(process.env.BAKE_OUT) : path.join(root, 'public', 'assets', 'mv');
 fs.mkdirSync(outDir, { recursive: true });
 
 const types = { '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript', '.json': 'application/json' };
@@ -29,6 +30,7 @@ page.on('console', (m) => { if (m.type() === 'error') console.error('[page]', m.
 page.on('pageerror', (e) => console.error('[page]', e.message));
 await page.goto('http://127.0.0.1:4100/tools/baker/index.html');
 await page.waitForFunction(() => window.bakerReady === true, null, { timeout: 60000 });
+if (process.env.BAKE_DEBUG) await page.evaluate((d) => { window.bakeDebug = d; }, Number(process.env.BAKE_DEBUG));
 
 const all = ['playstation', 'switch', 'xbox', 'logo', 'handheld', 'cartridge', 'joystick', 'crt', 'headset'];
 const names = process.argv.slice(2).length ? process.argv.slice(2) : all;
@@ -37,7 +39,7 @@ const manifest = fs.existsSync(manifestPath) ? JSON.parse(fs.readFileSync(manife
 
 for (const name of names) {
   const t0 = Date.now();
-  const res = await page.evaluate((n) => window.bakeModel(n), name);
+  const res = await page.evaluate(([n, c]) => window.bakeModel(n, c), [name, Number(process.env.BAKE_CELL) || 1024]);
   for (const [pass, url] of Object.entries(res.passes)) {
     const ext = url.startsWith('data:image/png') ? 'png' : 'jpg';
     fs.writeFileSync(path.join(outDir, `${name}_${pass}.${ext}`), Buffer.from(url.split(',')[1], 'base64'));

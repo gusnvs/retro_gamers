@@ -20,6 +20,14 @@ O shader (`MotionVectorShader`) escolhe o frame pela posição X do mouse. Não 
 3. `node tools/bake.mjs [nomes…]` — abre o baker no Chrome (CDP 9222) e grava em `public/assets/mv/` + `manifest.json` (colunas, linhas, força do deslocamento, versão para cache).
 4. `python tools/make-med.py` — gera as versões `-med` (2048²) usadas no grid.
 
+### Qualidade dos objetos do hero (playstation, switch, xbox, logo)
+- **Modelagem por SDF** (`tools/baker/sdf.js`): carcaças moldadas (controles, Joy-Cons, logo) são descritas como campos de distância e poligonizadas com Surface Nets — superfícies lisas, grips tubulares, linha de partição entre as metades, poços dos analógicos e furos dos botões escavados, grade do alto-falante. Botões/analógicos são posicionados na superfície com `placeOn`.
+- **Logo**: contorno dos pixels arredondado por morfologia 2D (`morphSDF`), corpo em metal azul cromado com face de esmalte branco rebaixada.
+- **Materiais**: `grained()` adiciona micro-textura em espaço de objeto (rugosidade + bump), estável entre os 16 frames.
+- **Luz** (`tools/baker/bake.js`): ambiente de estúdio (softboxes + faixa azul da marca) e **oclusão de ambiente** acumulada por shadow maps (72 direções fixas no espaço do modelo) aplicada antes do tone mapping.
+- Os 5 objetos do grid usam `legacyEnv: true, ao: 0` em `MODELS` para manter a aparência original até ganharem modelos no mesmo nível.
+- Prévias rápidas sem tocar em `public/`: `BAKE_OUT=<pasta> BAKE_CELL=512 node tools/bake.mjs logo` (`BAKE_DEBUG=1` mostra só o AO, `2` sem AO).
+
 Logo: a grade de pixels está em `INVADER` (`tools/baker/models.js`) e `INVADER_ROWS` (`src/components/icons.tsx`). Foi lida a partir da imagem enviada no chat; ajuste as linhas se algum pixel divergir do arquivo original.
 
 ## Para chegar ao nível da referência

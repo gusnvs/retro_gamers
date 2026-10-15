@@ -5,32 +5,51 @@ import { useEffect, useRef } from "react";
 import gsap from "gsap";
 import MVObject from "../gl/MVObject";
 import type { GridEntry } from "@/data/site";
+import { clipRuns, runsToPath, trail } from "@/lib/trail";
+import { useSceneLink } from "@/lib/useSceneLink";
 import s from "./Grid.module.css";
-
-// darker, saturated companion colour used for text inside the hover circle
-function inkFor(hex: string) {
-  const n = parseInt(hex.slice(1), 16);
-  const r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
-  const max = Math.max(r, g, b), min = Math.min(r, g, b);
-  const l = (max + min) / 510;
-  if (l < 0.25) return "#3da9f4";
-  // rotate hue a bit and push saturation/darkness, like the reference pairs
-  const k = 0.55;
-  return `rgb(${Math.round(r * k)}, ${Math.round(g * k * 0.6)}, ${Math.round(Math.min(255, b * k + 90))})`;
-}
 
 export default function GridItem({ item, href, variant = "home" }: { item: GridEntry; href: string; variant?: "home" | "list" }) {
   const ref = useRef<HTMLAnchorElement>(null);
   const hover = useRef<HTMLDivElement>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
+  const onClick = useSceneLink(href, item);
 
   useEffect(() => {
     const el = ref.current!;
     const layer = hover.current!;
+    const card = cardRef.current!;
+    // hover circle (percent of the layer) + pixel trail cells, one clip path
     const state = { r: 0, x: 50, y: 50 };
+    let trailPath = "";
     const apply = () => {
-      layer.style.clipPath = `circle(${state.r}% at ${state.x}% ${state.y}%)`;
+      const w = layer.offsetWidth, h = layer.offsetHeight;
+      let d = trailPath;
+      if (state.r > 0.05) {
+        const r = (state.r / 100) * Math.hypot(w, h) / Math.SQRT2;
+        const cx = (state.x / 100) * w, cy = (state.y / 100) * h;
+        d += `M${cx - r} ${cy}A${r} ${r} 0 1 1 ${cx + r} ${cy}A${r} ${r} 0 1 1 ${cx - r} ${cy}Z`;
+      }
+      layer.style.clipPath = d ? `path(nonzero, "${d}")` : "inset(50%)";
     };
     apply();
+    const offTrail = trail.subscribe((f) => {
+      const cr = card.getBoundingClientRect();
+      if (cr.bottom < 0 || cr.top > window.innerHeight) {
+        if (trailPath) {
+          trailPath = "";
+          apply();
+        }
+        return;
+      }
+      const lr = layer.getBoundingClientRect();
+      const next = runsToPath(clipRuns(f.runs, f.cell, cr), f.cell, lr.left, lr.top);
+      if (next !== trailPath) {
+        trailPath = next;
+        apply();
+      }
+    });
+    const offRegion = trail.region(card, "custom");
     const toLocal = (e: PointerEvent) => {
       const b = layer.getBoundingClientRect();
       return { x: ((e.clientX - b.left) / b.width) * 100, y: ((e.clientY - b.top) / b.height) * 100 };
@@ -45,20 +64,29 @@ export default function GridItem({ item, href, variant = "home" }: { item: GridE
       gsap.to(state, { x: 50 + (p.x - 50) * 0.15, y: 50 + (p.y - 50) * 0.15, duration: 0.8, ease: "power3.out", onUpdate: apply, overwrite: "auto" });
     };
     const leave = () => gsap.to(state, { r: 0, duration: 0.45, ease: "power3.inOut", onUpdate: apply, overwrite: true });
+    const focus = () => gsap.to(state, { r: 47, x: 50, y: 50, duration: 0.55, onUpdate: apply, overwrite: true });
+    // the hover circle collapses when the page transition starts (reference)
+    const click = () => gsap.to(state, { r: 0, duration: 0.6, ease: "power3.inOut", onUpdate: apply, overwrite: true });
+    el.addEventListener("click", click);
     el.addEventListener("pointerenter", enter);
     el.addEventListener("pointermove", move);
     el.addEventListener("pointerleave", leave);
-    el.addEventListener("focus", () => gsap.to(state, { r: 47, x: 50, y: 50, duration: 0.55, onUpdate: apply, overwrite: true }));
+    el.addEventListener("focus", focus);
     el.addEventListener("blur", leave);
     return () => {
+      offTrail();
+      offRegion();
+      el.removeEventListener("click", click);
       el.removeEventListener("pointerenter", enter);
       el.removeEventListener("pointermove", move);
       el.removeEventListener("pointerleave", leave);
+      el.removeEventListener("focus", focus);
+      el.removeEventListener("blur", leave);
       gsap.killTweensOf(state);
     };
   }, []);
 
-  const ink = inkFor(item.color);
+  const ink = item.colors.secondary;
   const label = (
     <p>
       {item.label} <span className={s.anno}>({item.anno})</span>
@@ -66,8 +94,8 @@ export default function GridItem({ item, href, variant = "home" }: { item: GridE
   );
 
   return (
-    <Link ref={ref} href={href} className={`${s.item} ${variant === "list" ? s.list : ""}`} aria-label={`${item.title} — ${item.description}`}>
-      <div className={s.intrinsic}>
+    <Link ref={ref} href={href} onClick={onClick} className={`${s.item} ${variant === "list" ? s.list : ""}`} aria-label={`${item.title} — ${item.description}`}>
+      <div ref={cardRef} className={s.intrinsic}>
         <div className={s.inner}>
           <div className={s.label}>{label}</div>
           <span className={s.badge} aria-hidden="true">

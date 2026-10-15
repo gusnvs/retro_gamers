@@ -2,30 +2,30 @@
   "playstation": {
     "columns": 4,
     "rows": 4,
-    "displacementStrength": 2.14,
+    "displacementStrength": 2.49,
     "cell": 1024,
-    "v": "mv8r66fu"
+    "v": "mv8safuo"
   },
   "xbox": {
     "columns": 4,
     "rows": 4,
-    "displacementStrength": 2.07,
+    "displacementStrength": 2.35,
     "cell": 1024,
-    "v": "mv8r675r"
+    "v": "mv8samr2"
   },
   "switch": {
     "columns": 4,
     "rows": 4,
-    "displacementStrength": 1.22,
+    "displacementStrength": 1.21,
     "cell": 1024,
-    "v": "mv8r66tl"
+    "v": "mv8sahko"
   },
   "logo": {
     "columns": 4,
     "rows": 4,
     "displacementStrength": 1.51,
     "cell": 1024,
-    "v": "mv8r67ge"
+    "v": "mv8sap5d"
   },
   "handheld": {
     "columns": 4,

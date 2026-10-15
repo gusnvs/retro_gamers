@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import gsap from "gsap";
+import { useTrailRegion } from "@/lib/useTrailRegion";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import MVObject from "../gl/MVObject";
 import PageFooter from "../PageFooter";
@@ -24,6 +25,7 @@ const RANGE = [
 
 export default function Sobre() {
   const root = useRef<HTMLDivElement>(null);
+  useTrailRegion(root, "difference");
 
   useEffect(() => {
     const ctx = gsap.context(() => {

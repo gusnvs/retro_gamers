@@ -10,7 +10,10 @@
 | Páginas Loja (filtros por categoria), Sobre, Contato, 404 | testes Playwright |
 | Menu mobile, header ativo, transição de rota, scroll suave, indicador de scroll | testes Playwright |
 | Responsivo 1920 → 375 sem overflow horizontal | teste automatizado em 5 viewports |
-| Build de produção (`next build`) e testes em produção | 17/17 PASS (dev e prod) |
+| Rastro do mouse pixelado (hero, reel com interferência de TV, "Quem somos", cards, footers, páginas internas) | teste Playwright + capturas `_research/ref/sheet_trail_local.jpg` |
+| 9 páginas de detalhe `/loja/[slug]` (equivalentes às páginas de projeto) | teste Playwright (todas carregam sem erro) |
+| Transição de cena card → detalhe (shader da referência portado) e revelação inicial | teste Playwright + capturas `_research/ref/sheet_detailtrans_local.jpg` |
+| Testes Playwright (dev) | 20/20 PASS — `next build` desta rodada ainda não executado |
 | Acessibilidade básica: landmarks, `aria-label` nos objetos 3D, foco visível, `aria-current`, `prefers-reduced-motion` | revisão manual |
 
 ## Simulado / sem integração real
@@ -29,8 +32,10 @@
 |---|---|
 | Fonte Decagram | Licença comercial (Emtype). Substituída por Archivo. Basta comprar a licença e trocar `--font-base`. |
 | Assets da Buttermax (renders, vídeo, cases, logos) | Sem autorização de uso; substituídos por conteúdo Retro Gamers. |
-| Páginas de case `/projects/:slug` | Conteúdo de clientes da Buttermax; a Loja aponta para o Contato com o assunto preenchido. |
-| Texto em WebGL (MSDF) e simulação de fluido do mouse | Texto feito em DOM com a mesma geometria; hover com círculo (sem fluido). |
+| Conteúdo dos cases `/projects/:slug` | Conteúdo de clientes da Buttermax; a estrutura foi recriada em `/loja/[slug]` com conteúdo Retro Gamers. |
+| Texto em WebGL (MSDF) | Texto em DOM com a mesma geometria. |
+| Simulação de fluido Navier–Stokes do mouse | Substituída, a pedido, por um campo pixelado com difusão (mesmos limiares e regras de cor). |
+| Fotos/vídeos dos cases | Galeria usa quadros do próprio objeto 3D (vários ângulos) e cenas do reel; conteúdo das categorias marcado como a confirmar com a loja. |
 | Pós-processamento (bloom, RGB shift global) | Não implementado. |
 
 ## Riscos / próximos passos sugeridos

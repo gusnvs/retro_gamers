@@ -64,3 +64,18 @@ IoU de máscaras de tinta também foi calculado (`metrics.json`), mas é pouco i
 - "Gamers" em fonte Sacramento difere do lettering exclusivo "max".
 - Hover do card usa círculo com clip-path; a referência usa simulação de fluido (blob orgânico).
 - Não há métrica de "similaridade %" global: o conteúdo foi trocado de propósito (marca, cor, textos, objetos), o que torna um diff de pixels global sem significado.
+
+## 6. Rodada 2 — rastro do mouse e páginas de detalhe
+
+Capturas (Playwright, 1440×900, mouse em zigue-zague por seção; clique em card com quadros a cada ~60–180 ms):
+- Referência: `_research/ref/sheet_trail.jpg`, `sheet_detailtrans.jpg`, `sheet_dreamwave.jpg`.
+- Implementação: `_research/ref/sheet_trail_local.jpg`, `sheet_detailtrans_local.jpg`, `sheet_l_detail.jpg`, `sheet_load_local.jpg`, `sheet_m_detail.jpg`.
+
+| Marco da transição | Referência | Implementação |
+|---|---|---|
+| Círculo do hover encolhe | ~0,6–0,8 s | ~0,45–0,6 s |
+| Primeiros pontos | 1,146 s | ~1,15 s |
+| Campo de pontos + cena nova | 1,404 s | ~1,44 s |
+| Página nova completa | ~1,6 s | ~1,7 s |
+
+Divergências conhecidas: o objeto 3D da página nova entra com a própria transição (na referência ele já está visível); o rastro é pixelado por decisão de produto; a "cena nova" dentro dos pontos é uma pintura (fundo + título), não um render da página inteira.

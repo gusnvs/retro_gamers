@@ -1,4 +1,8 @@
+"use client";
+
 import Link from "next/link";
+import { useRef } from "react";
+import { useTrailRegion } from "@/lib/useTrailRegion";
 import MVObject from "./gl/MVObject";
 import { ArrowUpRight } from "./icons";
 import { INSTAGRAM, INSTAGRAM_HANDLE } from "@/data/site";
@@ -6,8 +10,10 @@ import s from "./PageFooter.module.css";
 
 // "Reach out" footer: big title + contact, a 3D object over the title and pill links.
 export default function PageFooter({ theme = "dark" }: { theme?: "dark" | "brand" }) {
+  const ref = useRef<HTMLElement>(null);
+  useTrailRegion(ref, theme === "dark" ? "difference" : "invert");
   return (
-    <footer className={`${s.footer} ${theme === "brand" ? s.brand : ""}`}>
+    <footer ref={ref} className={`${s.footer} ${theme === "brand" ? s.brand : ""}`}>
       <div className={s.link}>
         <MVObject className={s.mv} name="logo" quality="med" label="Logo Retro Gamers em 3D" />
         <div className={s.titlewrapper}>

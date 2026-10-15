@@ -212,6 +212,13 @@ void main() {
   vec2 drawer = vec2(0.0);
   vec2 st = (gl_FragCoord.xy / resolution.xy);
 
+  #ifdef DESKTOP
+  // Tests.useFluids(): pixel trail field (R) — see src/lib/trail.ts
+  drawer = texture2D(tDraw, st).rg;
+  draw = drawer.r + drawer.g;
+  draw = smoothstep(0.0, 1.0, draw);
+  #endif
+
   float noise = vNoise;
   vec3 position = getMap(tPosition, blend, subUv, subUvNext, displacement, displacementNext).rgb;
 

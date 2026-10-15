@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
 const PAGES = ["/", "/loja", "/sobre", "/contato"];
+const DETAILS = ["playstation", "nintendo-switch", "xbox", "portateis", "jogos-raros", "atari", "conserto", "acessorios", "troca"];
 
 function trackErrors(page: Page) {
   const errors: string[] = [];
@@ -30,12 +31,23 @@ for (const path of PAGES) {
   });
 }
 
+test("all detail pages load without errors", async ({ page }) => {
+  const errors = trackErrors(page);
+  for (const slug of DETAILS) {
+    await page.goto(`/loja/${slug}`);
+    await ready(page);
+    await expect(page.locator("h1")).toBeVisible();
+    await expect(page.getByText("Categoria").first()).toBeVisible();
+  }
+  expect(errors).toEqual([]);
+});
+
 test("home: hero, reel, grid and footer render", async ({ page }) => {
   await page.goto("/");
   await ready(page);
   await expect(page.getByRole("heading", { level: 1, name: "Retro Gamers" })).toBeVisible();
-  await expect(page.getByRole("region", { name: "Reel Retro Gamers" }).locator("canvas")).toHaveCount(2);
-  await expect(page.locator("a[href^='/loja?categoria=']")).toHaveCount(9);
+  await expect(page.getByRole("region", { name: "Reel Retro Gamers" }).locator("canvas")).toHaveCount(3);
+  await expect(page.locator("a[href^='/loja/']")).toHaveCount(9);
   await expect(page.getByRole("link", { name: "Fale conosco" })).toBeVisible();
   // WebGL actually draws something over the hero slide
   const painted = await page.evaluate(() => {
@@ -95,12 +107,39 @@ test("loja filters update URL and items", async ({ page }) => {
   await expect(page.getByRole("tabpanel").locator("a")).toHaveCount(9);
 });
 
-test("home grid card links to filtered loja", async ({ page }) => {
+test("grid card plays the scene transition into its detail page", async ({ page }) => {
   await page.goto("/");
   await ready(page);
-  await page.locator("a[href='/loja?categoria=xbox']").click();
-  await expect(page).toHaveURL(/categoria=xbox/);
-  await expect(page.getByRole("tabpanel").locator("a")).toHaveCount(1);
+  const card = page.locator("a[href='/loja/xbox']");
+  await card.scrollIntoViewIfNeeded();
+  await page.waitForTimeout(800);
+  await card.click();
+  // the old page stays during the first part of the transition (2.6s timeline)
+  await page.waitForTimeout(400);
+  expect(new URL(page.url()).pathname).toBe("/");
+  await expect(page).toHaveURL(/\/loja\/xbox$/, { timeout: 6000 });
+  await expect(page.getByRole("heading", { level: 1, name: "Xbox" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Voltar para a loja" })).toBeVisible();
+});
+
+test("detail footer leads to the next item", async ({ page }) => {
+  await page.goto("/loja/xbox");
+  await ready(page);
+  const next = page.getByRole("link", { name: /Próximo: Portáteis/ });
+  await next.scrollIntoViewIfNeeded();
+  await next.click();
+  await expect(page).toHaveURL(/\/loja\/portateis$/, { timeout: 6000 });
+});
+
+test("mouse trail draws pixel cells", async ({ page }) => {
+  await page.goto("/");
+  await ready(page);
+  await page.mouse.move(200, 300);
+  await page.mouse.move(1200, 500, { steps: 20 });
+  const visible = await page.evaluate(() =>
+    [...document.querySelectorAll<HTMLElement>("[aria-hidden='true'] > div")].some((d) => d.style.visibility === "visible" && d.style.clipPath.startsWith("path")),
+  );
+  expect(visible).toBe(true);
 });
 
 test("contato form validates and shows demo success", async ({ page }) => {
