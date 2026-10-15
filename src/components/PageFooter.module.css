@@ -68,6 +68,19 @@
   line-height: 1.1;
   text-transform: uppercase;
 }
+.credits {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: -22px;
+  font-size: 0.6rem;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  opacity: 0.6;
+}
+.credits a {
+  text-decoration: underline;
+}
 .links {
   display: flex;
   gap: 0.5rem;
@@ -137,6 +150,10 @@
   }
   .bottom {
     padding: 0 30px;
+  }
+  .credits {
+    left: 30px;
+    right: 30px;
   }
   .pill {
     gap: 2.5rem;

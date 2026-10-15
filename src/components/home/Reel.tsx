@@ -19,6 +19,7 @@ export default function Reel() {
     const holder = box.current!;
     reel.canvas.className = s.canvas;
     reel.canvas.setAttribute("aria-hidden", "true");
+    reel.canvas.setAttribute("data-scene-live", "reel"); // kept playing by scene transitions
     holder.appendChild(reel.canvas);
 
     const bgc = bg.current!;
@@ -125,7 +126,7 @@ export default function Reel() {
       <canvas ref={bg} className={s.bg} width={160} height={90} aria-hidden="true" />
       <div className={s.shade} />
       <div ref={box} className={s.box} />
-      <canvas ref={fx} className={s.fx} aria-hidden="true" />
+      <canvas ref={fx} className={s.fx} aria-hidden="true" data-scene-skip />
     </section>
   );
 }

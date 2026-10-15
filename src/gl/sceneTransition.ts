@@ -1,7 +1,9 @@
 // Port of the reference "SceneTransition.fs" (dot-grid page transition).
-// Differences: the "from" scene is the live DOM underneath (its zoom/rotation is
-// applied with CSS), so this quad only outputs the "to" scene + rainbow rim inside
-// the mask (uMode 0, navigation) or the black "from" outside it (uMode 1, first load).
+// The "to" scene is the real new page, already mounted underneath: this quad draws
+// the "from" scene (a snapshot of the old page, uMode 0) or the black first frame
+// (uMode 1) outside the dot mask and the rainbow rim on its edge, and is
+// transparent inside the mask. At uTransition = 1 the quad is fully transparent,
+// so removing it is invisible — exactly like the reference swapping shaders.
 
 export const sceneVertex = /* glsl */ `
 varying vec2 vUv;
@@ -12,7 +14,8 @@ void main() {
 `;
 
 export const sceneFragment = /* glsl */ `
-uniform sampler2D tTo;
+uniform sampler2D tFrom;
+uniform float uVelocity;
 uniform vec2 resolution;
 uniform float time;
 uniform vec2 uMousePosition;
@@ -76,6 +79,14 @@ float circleExp(vec2 position, float scale) {
   return 1.0 - smoothstep(circleRadius - edgeSmoothness, circleRadius, distanceToCenter);
 }
 
+vec3 rgbShift(sampler2D tDiffuse, vec2 uv, float angle, float amount) {
+  vec2 offset = vec2(cos(angle), sin(angle)) * amount;
+  float r = texture2D(tDiffuse, uv + offset).r;
+  float g = texture2D(tDiffuse, uv).g;
+  float b = texture2D(tDiffuse, uv - offset).b;
+  return vec3(r, g, b);
+}
+
 vec2 applyCRTEffect(vec2 uv, float barrelAmount, float pincushionAmount) {
   if (barrelAmount > 0. || pincushionAmount > 0.) {
     uv = 2.0 * uv - 1.0;
@@ -128,12 +139,12 @@ void main() {
   vec2 scaleOrigin = mousePos;
   scaleOrigin = mix(scaleOrigin, vec2(0.5), 0.2);
   scaleOrigin.y += 0.2 - uTransition * 0.5;
-  scaleOrigin.y -= uTransition * 0.5;
 
-  vec2 uvTo = mix(applyCRTEffect(uv, -0.1, 0.1), uv, uTransition);
-  uvTo = scaleUV(uvTo, vec2(0.6 + uTransition * 0.4), scaleOrigin);
-  uvTo = rotateUV(uvTo, (1.0 - uTransition) * mousePos.x * 0.3, vec2(0.5));
-  vec3 to = texture2D(tTo, clamp(uvTo, 0.0, 1.0)).rgb;
+  vec2 uvFrom = mix(uv, applyCRTEffect(uv, 0.1, -.1), uTransition);
+  uvFrom = scaleUV(uvFrom, vec2(1.0 + uTransition * 1.2), scaleOrigin);
+  uvFrom = rotateUV(uvFrom, -uTransition * mousePos.x * 0.3, vec2(0.5));
+  vec3 from = rgbShift(tFrom, uvFrom, radians(90.0), 0.01 * uTransition + uVelocity * 0.0001);
+  if (from == vec3(0.0)) from = vec3(16. / 300.);
 
   vec3 rainbow = vec3(1.0, 0.15, 0.15);
   rainbow = rgb2hsv(rainbow);
@@ -146,13 +157,8 @@ void main() {
   float mask = step(0.5, v);
   float ring = (1.0 - step(0.5 + offsetRainbow * fadeRainbow, v)) * mask;
 
-  vec4 outColor;
-  if (uMode < 0.5) {
-    outColor = vec4(mix(to, rainbow, ring), mask);
-  } else {
-    vec3 from = vec3(16. / 255.);
-    outColor = vec4(mix(from, rainbow, ring), max(1.0 - mask, ring));
-  }
+  if (uMode > 0.5) from = vec3(16. / 255.); // first load: black "from" scene
+  vec4 outColor = vec4(mix(from, rainbow, ring), max(1.0 - mask, ring));
   outColor.a *= uFade;
   gl_FragColor = outColor;
 }

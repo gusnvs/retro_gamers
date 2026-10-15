@@ -26,7 +26,10 @@ export default function SmoothScroll({ children }: { children: React.ReactNode }
     gsap.ticker.add(raf);
     gsap.ticker.lagSmoothing(0);
     setLenis(l);
+    const top = () => l.scrollTo(0, { immediate: true, force: true });
+    window.addEventListener("rg:scroll-top", top);
     return () => {
+      window.removeEventListener("rg:scroll-top", top);
       gsap.ticker.remove(raf);
       l.destroy();
     };

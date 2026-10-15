@@ -6,9 +6,22 @@ import { useEffect, useState } from "react";
 import s from "./Header.module.css";
 import { ArrowLeft, ArrowUpRight, InvaderIcon, OvalEmblem } from "./icons";
 import { GRID, NAV } from "@/data/site";
+import { isSceneTransitioning } from "@/lib/sceneNav";
 
 export default function Header() {
-  const pathname = usePathname();
+  const routePath = usePathname();
+  // during a scene transition the header keeps the old page's look until the dot
+  // mask starts revealing the new page (reference swaps it with the scene)
+  const [pathname, setShownPath] = useState(routePath);
+  useEffect(() => {
+    if (!isSceneTransitioning()) {
+      setShownPath(routePath);
+      return;
+    }
+    const swap = () => setShownPath(routePath);
+    window.addEventListener("rg:header-swap", swap, { once: true });
+    return () => window.removeEventListener("rg:header-swap", swap);
+  }, [routePath]);
   const [open, setOpen] = useState(false);
   const isHome = pathname === "/";
   // project pages tint the header with the item's tertiary colour (no blend)
@@ -18,6 +31,11 @@ export default function Header() {
     : undefined;
 
   useEffect(() => setOpen(false), [pathname]);
+  useEffect(() => {
+    const close = () => setOpen(false);
+    window.addEventListener("rg:navigate-start", close);
+    return () => window.removeEventListener("rg:navigate-start", close);
+  }, []);
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);

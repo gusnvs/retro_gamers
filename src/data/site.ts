@@ -13,6 +13,14 @@ export const NAV = [
 export const INSTAGRAM = "https://www.instagram.com/retrogamersbr/";
 export const INSTAGRAM_HANDLE = "@retrogamersbr";
 
+// 3D models baked into the motion-vector sprites (Sketchfab, CC BY 4.0: credit required)
+export const MODEL_CREDITS = [
+  { title: "Playstation 5 Dualsense", author: "AHarmlessPotato", href: "https://sketchfab.com/3d-models/playstation-5-dualsense-878c1f882808477ab81c2fe86d5a3936" },
+  { title: "Nintendo Switch", author: "gabrieljuan0322", href: "https://sketchfab.com/3d-models/nintendo-switch-b94e6a6a8c564fee81c2d794da6c5712" },
+  { title: "Xbox Controller", author: "umkhero", href: "https://sketchfab.com/3d-models/xbox-controller-32d17951703b4e05abed11a1c65f5909" },
+  { title: "GAMEBOY", author: "grimmorf", href: "https://sketchfab.com/3d-models/gameboy-4a1da0cefa904c4eae895338bd6f3334" },
+];
+
 export const HERO_DEVICES: { name: MVName; useMask: boolean }[] = [
   { name: "playstation", useMask: true },
   { name: "switch", useMask: true },

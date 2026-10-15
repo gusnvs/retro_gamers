@@ -721,11 +721,13 @@ function buildHeadset() {
 // view settings per model: base orientation + yaw sweep (degrees)
 // legacyEnv/ao: 0 keep the grid objects' original look (RoomEnvironment, no AO) until they get hero-level models
 export const MODELS = {
-  playstation: { build: buildPlaystation, pitch: -48, roll: 0, yaw: [-32, 32], fill: 0.94 },
-  switch: { build: buildSwitch, pitch: -14, roll: 0, yaw: [-30, 30], fill: 0.94 },
-  xbox: { build: buildXbox, pitch: -48, roll: 0, yaw: [-32, 32], fill: 0.94, envIntensity: 1.35 },
+  // `glb`: ready-made model used instead of the procedural one when the file exists in
+  // tools/baker/models (Sketchfab CC-BY downloads — see docs/3d-pipeline.md for credits)
+  playstation: { build: buildPlaystation, pitch: -48, roll: 0, yaw: [-32, 32], fill: 0.94, glb: { file: 'playstation_5_dualsense.glb', size: 3.4, rotation: [-90, 0, 180], screenPlane: { x: 0, y: 0, z: 0.33, w: 0.37, h: 0.27, snap: '-y' } } },
+  switch: { build: buildSwitch, pitch: -14, roll: 0, yaw: [-30, 30], fill: 0.94, glb: { file: 'nintendo_switch.glb', size: 3.4, screen: /screen_19|screen001|cube_screen_glass/i } },
+  xbox: { build: buildXbox, pitch: -48, roll: 0, yaw: [-32, 32], fill: 0.94, envIntensity: 1.35, glb: { file: 'xbox_controller.glb', size: 3.4 } },
   logo: { build: buildLogo, pitch: -8, roll: 0, yaw: [-34, 34], fill: 0.94 },
-  handheld: { build: buildHandheld, pitch: -10, roll: -6, yaw: [-30, 30], fill: 0.94, legacyEnv: true, envIntensity: 0.85, ao: 0 },
+  handheld: { build: buildHandheld, pitch: -10, roll: -6, yaw: [-30, 30], fill: 0.94, legacyEnv: true, envIntensity: 0.85, ao: 0, glb: { file: 'gameboy.glb', size: 3.0, screenPlane: { x: 0.025, y: 0.215, z: 0.452, w: 0.5, h: 0.31 } } },
   cartridge: { build: buildCartridge, pitch: -12, roll: 6, yaw: [-34, 34], fill: 0.94, legacyEnv: true, envIntensity: 0.85, ao: 0 },
   joystick: { build: buildJoystick, pitch: -62, roll: 0, yaw: [-34, 34], fill: 0.94, legacyEnv: true, envIntensity: 0.85, ao: 0 },
   crt: { build: buildCRT, pitch: -8, roll: 0, yaw: [-30, 30], fill: 0.94, legacyEnv: true, envIntensity: 0.85, ao: 0 },

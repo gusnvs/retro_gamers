@@ -5,8 +5,8 @@ import { useRef } from "react";
 import MVObject from "../gl/MVObject";
 import { ArrowUpRight } from "../icons";
 import { INSTAGRAM, type GridEntry } from "@/data/site";
-import { useSceneLink } from "@/lib/useSceneLink";
 import { useTrailRegion } from "@/lib/useTrailRegion";
+import ModelCredits from "../ModelCredits";
 import f from "../PageFooter.module.css";
 
 // Footer of a project page = the next project in its own colours (reference shows
@@ -14,7 +14,6 @@ import f from "../PageFooter.module.css";
 export default function NextFooter({ item }: { item: GridEntry }) {
   const ref = useRef<HTMLElement>(null);
   const href = `/loja/${item.slug}`;
-  const onClick = useSceneLink(href, item);
   useTrailRegion(ref, "invert");
   const { primary, secondary } = item.colors;
   return (
@@ -22,9 +21,9 @@ export default function NextFooter({ item }: { item: GridEntry }) {
       <div className={f.link}>
         <MVObject className={f.mv} name={item.device} quality="med" useMask={item.useMask} label={`${item.title} em 3D`} />
         <div className={f.titlewrapper}>
-          <a href={href} onClick={onClick} className={f.title} aria-label={`Próximo: ${item.title}`}>
+          <Link href={href} data-device={item.device} className={f.title} aria-label={`Próximo: ${item.title}`}>
             {item.label}
-          </a>
+          </Link>
           <span className={f.email}>Próximo</span>
         </div>
       </div>
@@ -33,6 +32,7 @@ export default function NextFooter({ item }: { item: GridEntry }) {
           Retro Gamers.
           <br /> Todos os direitos reservados.
         </p>
+        <ModelCredits className={f.credits} />
         <div className={f.links}>
           <a className={f.pill} style={{ background: secondary, color: primary }} href={INSTAGRAM} target="_blank" rel="noreferrer">
             <span>IG.</span>

@@ -53,7 +53,7 @@ export default function Contato() {
   return (
     <div ref={root} className={s.page}>
       <div className={s.vertical} aria-hidden="true">
-        <div className={s.verticalInner}>
+        <div className={s.verticalInner} data-scene-marquee="y">
           <span>Fale com a gente</span>
           <span>Fale com a gente</span>
         </div>
@@ -62,7 +62,7 @@ export default function Contato() {
 
       <div className={s.content}>
         <div className={s.pill} data-reveal aria-hidden="true">
-          <div className={s.pillInner}>
+          <div className={s.pillInner} data-scene-marquee="x">
             {Array.from({ length: 8 }).map((_, i) => (
               <span key={i}>{i % 2 ? "Consertamos seu videogame" : "Aceitamos seus jogos"}</span>
             ))}

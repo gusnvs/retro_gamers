@@ -64,6 +64,7 @@ test("desktop navigation and active state", async ({ page }) => {
     await page.getByRole("navigation", { name: "Principal" }).getByRole("link", { name: label, exact: true }).click();
     await expect(page).toHaveURL(new RegExp(`${path}$`));
     await expect(page.getByRole("navigation", { name: "Principal" }).getByRole("link", { name: label, exact: true })).toHaveAttribute("aria-current", "page");
+    await page.waitForTimeout(1600); // let the 2.6s scene transition finish (clicks are ignored meanwhile, like the reference)
   }
   await page.getByRole("link", { name: "Voltar para o início" }).click();
   await expect(page).toHaveURL(/\/$/);
@@ -115,7 +116,7 @@ test("grid card plays the scene transition into its detail page", async ({ page 
   await page.waitForTimeout(800);
   await card.click();
   // the old page stays during the first part of the transition (2.6s timeline)
-  await page.waitForTimeout(400);
+  await page.waitForTimeout(150);
   expect(new URL(page.url()).pathname).toBe("/");
   await expect(page).toHaveURL(/\/loja\/xbox$/, { timeout: 6000 });
   await expect(page.getByRole("heading", { level: 1, name: "Xbox" })).toBeVisible();

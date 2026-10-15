@@ -26,7 +26,7 @@ const browser = process.env.BAKE_LAUNCH
   : await chromium.connectOverCDP('http://127.0.0.1:9222');
 const ctx = browser.contexts()[0] || (await browser.newContext());
 const page = await ctx.newPage();
-page.on('console', (m) => { if (m.type() === 'error') console.error('[page]', m.text()); });
+page.on('console', (m) => { if (m.type() === 'error' || m.text().startsWith('[bake]')) console.log('[page]', m.text()); });
 page.on('pageerror', (e) => console.error('[page]', e.message));
 await page.goto('http://127.0.0.1:4100/tools/baker/index.html');
 await page.waitForFunction(() => window.bakerReady === true, null, { timeout: 60000 });

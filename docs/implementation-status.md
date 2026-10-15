@@ -13,7 +13,9 @@
 | Rastro do mouse pixelado (hero, reel com interferência de TV, "Quem somos", cards, footers, páginas internas) | teste Playwright + capturas `_research/ref/sheet_trail_local.jpg` |
 | 9 páginas de detalhe `/loja/[slug]` (equivalentes às páginas de projeto) | teste Playwright (todas carregam sem erro) |
 | Transição de cena card → detalhe (shader da referência portado) e revelação inicial | teste Playwright + capturas `_research/ref/sheet_detailtrans_local.jpg` |
-| Testes Playwright (dev) | 20/20 PASS — `next build` desta rodada ainda não executado |
+| Transição de cena em todas as rotas internas, com a página de saída viva durante a transição (objetos 3D girando, reel e marquees animados) | gravações CDP `_research/live_*_sheet.jpg` |
+| Controles 3D a partir dos GLB do Sketchfab (DualSense, Switch, Xbox, Game Boy) com reel nas telas; créditos CC BY no rodapé | bake + capturas + rodapé verificado em 1440 e 375 px |
+| Testes Playwright (dev) e build de produção | 20/20 PASS; `next build` OK |
 | Acessibilidade básica: landmarks, `aria-label` nos objetos 3D, foco visível, `aria-current`, `prefers-reduced-motion` | revisão manual |
 
 ## Simulado / sem integração real

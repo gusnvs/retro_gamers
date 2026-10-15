@@ -1,0 +1,9 @@
+Coloque aqui os modelos baixados do Sketchfab (formato glTF binário .glb):
+
+- playstation_5_dualsense.glb
+- nintendo_switch.glb
+- xbox_controller.glb
+- gameboy.glb
+(os nomes ficam em tools/baker/models.js; os créditos CC BY estão em src/data/site.ts)
+
+Depois rode: node tools/bake.mjs playstation switch xbox handheld && python tools/make-med.py

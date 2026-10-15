@@ -6,6 +6,7 @@ import { useTrailRegion } from "@/lib/useTrailRegion";
 import MVObject from "./gl/MVObject";
 import { ArrowUpRight } from "./icons";
 import { INSTAGRAM, INSTAGRAM_HANDLE } from "@/data/site";
+import ModelCredits from "./ModelCredits";
 import s from "./PageFooter.module.css";
 
 // "Reach out" footer: big title + contact, a 3D object over the title and pill links.
@@ -30,6 +31,7 @@ export default function PageFooter({ theme = "dark" }: { theme?: "dark" | "brand
           Retro Gamers.
           <br /> Todos os direitos reservados.
         </p>
+        <ModelCredits className={s.credits} />
         <div className={s.links}>
           <a className={s.pill} href={INSTAGRAM} target="_blank" rel="noreferrer">
             <span>IG.</span>

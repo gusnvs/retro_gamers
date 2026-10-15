@@ -44,3 +44,4 @@ _research/
 # playwright
 /test-results/
 /playwright-report/
+/.next-check/

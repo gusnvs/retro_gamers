@@ -78,4 +78,6 @@ Capturas (Playwright, 1440×900, mouse em zigue-zague por seção; clique em car
 | Campo de pontos + cena nova | 1,404 s | ~1,44 s |
 | Página nova completa | ~1,6 s | ~1,7 s |
 
+Rodada 4 (cena de saída viva), gravações CDP 1440×900 com o mouse em movimento durante a transição: `_research/live_home_sobre_sheet.jpg`, `live_detail_sheet.jpg`, `live_contato_sheet.jpg`. PASS: o Switch do hero gira e a tela muda entre 0,8 s e 1,2 s; o marquee "XBOX" e o controle continuam em movimento; no Contato a coluna vertical e o invader seguem animados e a pílula não duplica o texto. Ainda há uma pausa única de ~0,1 s no clique (captura do DOM), antes de a transição começar.
+
 Divergências conhecidas: o objeto 3D da página nova entra com a própria transição (na referência ele já está visível); o rastro é pixelado por decisão de produto; a "cena nova" dentro dos pontos é uma pintura (fundo + título), não um render da página inteira.

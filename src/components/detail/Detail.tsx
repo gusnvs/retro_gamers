@@ -47,7 +47,7 @@ export default function Detail({ item, next, index }: { item: GridEntry; next: G
     <div ref={root} className={s.project} style={{ ["--primary" as string]: primary, ["--secondary" as string]: secondary, ["--tertiary" as string]: tertiary }}>
       <section className={s.header} aria-label={item.title}>
         <h1 className={s.title} aria-label={item.title}>
-          <span className={s.marquee} aria-hidden="true">
+          <span className={s.marquee} aria-hidden="true" data-scene-marquee="x">
             {Array.from({ length: 4 }).map((_, i) => (
               <span key={i}>{item.title}&nbsp;</span>
             ))}

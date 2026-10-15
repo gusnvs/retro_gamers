@@ -26,6 +26,72 @@ export interface SceneQuad {
   dispose: () => void;
 }
 
+/** live layers of the outgoing page, kept moving during a scene transition */
+export interface FromReel {
+  rect: { left: number; top: number; width: number; height: number };
+  clip: { left: number; top: number; right: number; bottom: number };
+}
+export interface FromMarquee {
+  /** the marquee track rendered without its animated translate */
+  canvas: HTMLCanvasElement;
+  /** visible strip (screen px) and its corner radius */
+  clip: { left: number; top: number; width: number; height: number; radius: number };
+  /** track box without its animated translate */
+  box: { left: number; top: number; width: number; height: number };
+  /** current translate (screen px) */
+  offset: { x: number; y: number };
+  /** px/s along the track; wraps every `loop` px */
+  velocity: { x: number; y: number };
+  loop: number;
+}
+export interface LiveFrom {
+  texture: THREE.Texture;
+  release: () => void;
+}
+
+const quadVertex = /* glsl */ `
+varying vec2 vUv;
+void main() {
+  vUv = uv;
+  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+}
+`;
+const pageFragment = /* glsl */ `
+uniform sampler2D tMap;
+varying vec2 vUv;
+void main() { gl_FragColor = vec4(texture2D(tMap, vUv).rgb, 1.0); }
+`;
+// reel canvas: object-fit cover inside its box, clipped by the holder's inset
+const reelFragment = /* glsl */ `
+uniform sampler2D tMap;
+uniform vec2 uCover;
+uniform vec4 uClip;
+varying vec2 vUv;
+void main() {
+  vec2 p = vec2(vUv.x, 1.0 - vUv.y);
+  if (p.x < uClip.x || p.y < uClip.y || p.x > uClip.z || p.y > uClip.w) discard;
+  vec2 st = (vUv - 0.5) * uCover + 0.5;
+  gl_FragColor = vec4(texture2D(tMap, st).rgb, 1.0);
+}
+`;
+// marquee track: its texture keeps scrolling inside the (rounded) strip
+const marqueeFragment = /* glsl */ `
+uniform sampler2D tMap;
+uniform vec4 uClip;
+uniform float uRadius;
+uniform vec4 uBox;
+uniform vec2 uOffset;
+varying vec2 vUv;
+void main() {
+  vec2 p = uClip.xy + vec2(vUv.x, 1.0 - vUv.y) * uClip.zw;
+  vec2 q = abs(p - uClip.xy - uClip.zw * 0.5) - (uClip.zw * 0.5 - uRadius);
+  if (length(max(q, 0.0)) > uRadius) discard;
+  vec2 l = (p - uBox.xy - uOffset) / uBox.zw;
+  if (l.x < 0.0 || l.y < 0.0 || l.x > 1.0 || l.y > 1.0) discard;
+  gl_FragColor = texture2D(tMap, vec2(l.x, 1.0 - l.y));
+}
+`;
+
 export interface MVItem {
   el: HTMLElement;
   name: MVName;
@@ -54,6 +120,13 @@ class GLStage {
   drawTex: THREE.DataTexture;
   velocity = { value: 0 };
   private quads = new Set<THREE.Mesh>();
+  // outgoing page during a transition: its MV items (frozen at their last rect),
+  // reels and marquees keep animating, rendered into fromRT each frame
+  private fromScene: THREE.Scene | null = null;
+  private fromRT: THREE.WebGLRenderTarget | null = null;
+  private fromItems = new Map<MVItem, { left: number; top: number; width: number; height: number }>();
+  private fromRemoved = new Set<MVItem>();
+  private fromTicks: ((dt: number) => void)[] = [];
   private texCache = new Map<string, Promise<Tex>>();
   private alphaCache = new Map<string, Promise<{ data: Uint8ClampedArray; size: number }>>();
   private lastScroll = 0;
@@ -250,6 +323,12 @@ class GLStage {
   }
 
   remove(item: MVItem) {
+    if (this.fromItems.has(item)) {
+      // still drawn by the outgoing scene: dispose once the transition ends
+      item.disposed = true;
+      this.fromRemoved.add(item);
+      return;
+    }
     item.disposed = true;
     this.items.delete(item);
     this.scene.remove(item.mesh);
@@ -329,6 +408,27 @@ class GLStage {
       }
       item.hovered = hovered;
     }
+    if (this.fromScene && this.fromRT) {
+      for (const [item, r] of this.fromItems) {
+        const u = item.uniforms;
+        (u.uMouse.value as THREE.Vector2).lerp(target, 0.08 * hz);
+        u.time.value = time;
+        (u.resolution.value as THREE.Vector2).copy(buf);
+        u.uClickTime.value = (u.uClickTime.value as number) + dt / 1200;
+        if ((u.uInside.value as number) > 0) u.uInside.value = Math.max(0, (u.uInside.value as number) - 0.01 * hz);
+        item.mesh.position.set(r.left, -r.top, 0);
+        item.mesh.scale.set(r.width, r.height, 1);
+        item.mesh.visible = true;
+      }
+      this.fromTicks.forEach((f) => f(dt));
+      if (this.fromRT.width !== buf.x || this.fromRT.height !== buf.y) this.fromRT.setSize(buf.x, buf.y);
+      this.renderer.setRenderTarget(this.fromRT);
+      this.renderer.setClearColor(0x000000, 1);
+      this.renderer.clear();
+      this.renderer.render(this.fromScene, this.camera);
+      this.renderer.setRenderTarget(null);
+      this.renderer.setClearColor(0x000000, 0);
+    }
     for (const q of this.quads) {
       const u = (q.material as THREE.ShaderMaterial).uniforms;
       u.time.value = time;
@@ -341,10 +441,17 @@ class GLStage {
   };
 
   /** full-screen dot-grid scene transition (reference SceneTransition.fs) */
-  sceneQuad(to: HTMLCanvasElement | null, mode: 0 | 1, mouse: { x: number; y: number }): SceneQuad {
-    const tex = to ? new THREE.CanvasTexture(to) : this.black;
+  sceneQuad(from: THREE.Texture | HTMLCanvasElement | null, mode: 0 | 1, mouse: { x: number; y: number }): SceneQuad {
+    const owned = from instanceof HTMLCanvasElement;
+    const tex = from instanceof THREE.Texture ? from : from ? new THREE.CanvasTexture(from) : this.black;
+    if (owned) {
+      tex.colorSpace = THREE.NoColorSpace;
+      tex.minFilter = THREE.LinearFilter;
+      tex.generateMipmaps = false;
+    }
     const uniforms: Record<string, THREE.IUniform> = {
-      tTo: { value: tex },
+      tFrom: { value: tex },
+      uVelocity: this.velocity,
       resolution: { value: new THREE.Vector2(1, 1) },
       time: { value: 0 },
       uMousePosition: { value: new THREE.Vector2(mouse.x, mouse.y) },
@@ -370,9 +477,123 @@ class GLStage {
         this.quads.delete(mesh);
         this.scene.remove(mesh);
         mat.dispose();
-        if (tex !== this.black) tex.dispose();
+        if (owned) tex.dispose();
       },
     };
+  }
+
+  private canvasTex(c: HTMLCanvasElement) {
+    const t = new THREE.CanvasTexture(c);
+    t.colorSpace = THREE.NoColorSpace;
+    t.minFilter = THREE.LinearFilter;
+    t.generateMipmaps = false;
+    return t;
+  }
+
+  private fromQuad(fragmentShader: string, uniforms: Record<string, THREE.IUniform>, r: { left: number; top: number; width: number; height: number }, order: number) {
+    const mat = new THREE.ShaderMaterial({ vertexShader: quadVertex, fragmentShader, uniforms, depthTest: false, depthWrite: false });
+    const mesh = new THREE.Mesh(this.geometry, mat);
+    mesh.frustumCulled = false;
+    mesh.renderOrder = order;
+    mesh.position.set(r.left, -r.top, 0);
+    mesh.scale.set(r.width, r.height, 1);
+    this.fromScene!.add(mesh);
+    return mesh;
+  }
+
+  /**
+   * Keeps the current page alive as the "from" scene of a transition: the DOM
+   * snapshot (`page`, taken without the live layers) at the back, reels and
+   * marquees re-drawn every frame on top, and the page's motion-vector objects
+   * adopted from the main scene (still following the mouse, still pulsing). The
+   * returned texture is re-rendered every frame until `release()`.
+   */
+  liveFrom(page: HTMLCanvasElement, layers: { reels?: FromReel[]; marquees?: FromMarquee[] } = {}): LiveFrom {
+    this.releaseFrom();
+    const W = window.innerWidth, H = window.innerHeight;
+    const buf = this.renderer.getDrawingBufferSize(new THREE.Vector2());
+    const scene = new THREE.Scene();
+    this.fromScene = scene;
+    this.fromRT = new THREE.WebGLRenderTarget(buf.x, buf.y, { depthBuffer: false, minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, generateMipmaps: false });
+    const disposables: { dispose: () => void }[] = [];
+
+    const pageTex = this.canvasTex(page);
+    const pageQuad = this.fromQuad(pageFragment, { tMap: { value: pageTex } }, { left: 0, top: 0, width: W, height: H }, -3);
+    disposables.push(pageTex, pageQuad.material as THREE.Material);
+
+    for (const m of layers.marquees ?? []) {
+      const tex = this.canvasTex(m.canvas);
+      const off = new THREE.Vector2(m.offset.x, m.offset.y);
+      const u: Record<string, THREE.IUniform> = {
+        tMap: { value: tex },
+        uClip: { value: new THREE.Vector4(m.clip.left, m.clip.top, m.clip.width, m.clip.height) },
+        uRadius: { value: Math.min(m.clip.radius, m.clip.width / 2, m.clip.height / 2) },
+        uBox: { value: new THREE.Vector4(m.box.left, m.box.top, m.box.width, m.box.height) },
+        uOffset: { value: off },
+      };
+      const q = this.fromQuad(marqueeFragment, u, m.clip, -2);
+      (q.material as THREE.ShaderMaterial).transparent = true;
+      this.fromTicks.push((dt) => {
+        off.x += (m.velocity.x * dt) / 1000;
+        off.y += (m.velocity.y * dt) / 1000;
+        // the track holds its content twice: jump back by one copy
+        if (m.loop > 0 && Math.hypot(off.x, off.y) >= m.loop) off.multiplyScalar(1 - m.loop / Math.hypot(off.x, off.y));
+      });
+      disposables.push(tex, q.material as THREE.Material);
+    }
+
+    for (const r of layers.reels ?? []) {
+      const img = this.reelTex.image as HTMLCanvasElement;
+      const ca = img.width / img.height, ra = r.rect.width / r.rect.height;
+      const cover = ra > ca ? new THREE.Vector2(1, ca / ra) : new THREE.Vector2(ra / ca, 1);
+      const clip = new THREE.Vector4(
+        (r.clip.left - r.rect.left) / r.rect.width,
+        (r.clip.top - r.rect.top) / r.rect.height,
+        (r.clip.right - r.rect.left) / r.rect.width,
+        (r.clip.bottom - r.rect.top) / r.rect.height,
+      );
+      const q = this.fromQuad(reelFragment, { tMap: { value: this.reelTex }, uCover: { value: cover }, uClip: { value: clip } }, r.rect, -1);
+      disposables.push(q.material as THREE.Material);
+    }
+
+    for (const item of [...this.items]) {
+      if (!item.mesh.visible) continue;
+      const r = item.el.getBoundingClientRect();
+      this.items.delete(item);
+      this.fromItems.set(item, { left: r.left, top: r.top, width: r.width, height: r.height });
+      this.scene.remove(item.mesh);
+      scene.add(item.mesh);
+      item.hovered = false;
+    }
+
+    const rt = this.fromRT;
+    return {
+      texture: rt.texture,
+      release: () => {
+        if (this.fromRT === rt) this.releaseFrom();
+        disposables.forEach((d) => d.dispose());
+      },
+    };
+  }
+
+  private releaseFrom() {
+    if (!this.fromScene) return;
+    for (const item of this.fromItems.keys()) {
+      this.fromScene.remove(item.mesh);
+      if (this.fromRemoved.has(item)) {
+        (item.mesh.material as THREE.Material).dispose();
+      } else {
+        // the component outlived the route change: hand it back to the page
+        this.items.add(item);
+        this.scene.add(item.mesh);
+      }
+    }
+    this.fromItems.clear();
+    this.fromRemoved.clear();
+    this.fromTicks = [];
+    this.fromRT?.dispose();
+    this.fromRT = null;
+    this.fromScene = null;
   }
 
   destroy() {

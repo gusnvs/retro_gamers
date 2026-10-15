@@ -3,6 +3,7 @@
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { MODELS } from './models.js';
+import { hasModel, loadModel } from './gltf.js';
 
 const COLS = 4, ROWS = 4, FRAMES = COLS * ROWS;
 const SS = 2; // supersampling factor
@@ -157,7 +158,14 @@ window.bakeModel = async function bakeModel(name, cell = 1024) {
 
   const yawGroup = new THREE.Group();
   const baseGroup = new THREE.Group();
-  const model = cfg.build();
+  // ready-made model (tools/baker/models/*.glb) when present, procedural otherwise
+  let model;
+  if (cfg.glb && (await hasModel(cfg.glb.file))) {
+    model = await loadModel(cfg.glb);
+    console.log(`[bake] ${name}: ${cfg.glb.file} | ` + model.userData.meshBoxes.join(' | '));
+  } else {
+    model = cfg.build();
+  }
   baseGroup.add(model);
   baseGroup.rotation.set(THREE.MathUtils.degToRad(cfg.pitch), 0, THREE.MathUtils.degToRad(cfg.roll));
   yawGroup.add(baseGroup);
@@ -248,7 +256,7 @@ window.bakeModel = async function bakeModel(name, cell = 1024) {
 
   // keep original materials, build pass materials per mesh
   const meshes = [];
-  model.traverse((o) => { if (o.isMesh) { meshes.push(o); o.castShadow = true; o.receiveShadow = true; } });
+  model.traverse((o) => { if (o.isMesh) { meshes.push(o); o.castShadow = !o.userData.noCastShadow; o.receiveShadow = true; } });
   const original = new Map(meshes.map((m) => [m, m.material]));
   const passMat = new Map(meshes.map((m) => [m, new THREE.ShaderMaterial({
     vertexShader: passVS, fragmentShader: passFS, side: THREE.DoubleSide,

@@ -6,14 +6,12 @@ import gsap from "gsap";
 import MVObject from "../gl/MVObject";
 import type { GridEntry } from "@/data/site";
 import { clipRuns, runsToPath, trail } from "@/lib/trail";
-import { useSceneLink } from "@/lib/useSceneLink";
 import s from "./Grid.module.css";
 
 export default function GridItem({ item, href, variant = "home" }: { item: GridEntry; href: string; variant?: "home" | "list" }) {
   const ref = useRef<HTMLAnchorElement>(null);
   const hover = useRef<HTMLDivElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
-  const onClick = useSceneLink(href, item);
 
   useEffect(() => {
     const el = ref.current!;
@@ -66,8 +64,8 @@ export default function GridItem({ item, href, variant = "home" }: { item: GridE
     const leave = () => gsap.to(state, { r: 0, duration: 0.45, ease: "power3.inOut", onUpdate: apply, overwrite: true });
     const focus = () => gsap.to(state, { r: 47, x: 50, y: 50, duration: 0.55, onUpdate: apply, overwrite: true });
     // the hover circle collapses when the page transition starts (reference)
-    const click = () => gsap.to(state, { r: 0, duration: 0.6, ease: "power3.inOut", onUpdate: apply, overwrite: true });
-    el.addEventListener("click", click);
+    const click = () => gsap.to(state, { r: 0, duration: 0.35, ease: "power3.inOut", onUpdate: apply, overwrite: true });
+    el.addEventListener("pointerup", click);
     el.addEventListener("pointerenter", enter);
     el.addEventListener("pointermove", move);
     el.addEventListener("pointerleave", leave);
@@ -76,7 +74,7 @@ export default function GridItem({ item, href, variant = "home" }: { item: GridE
     return () => {
       offTrail();
       offRegion();
-      el.removeEventListener("click", click);
+      el.removeEventListener("pointerup", click);
       el.removeEventListener("pointerenter", enter);
       el.removeEventListener("pointermove", move);
       el.removeEventListener("pointerleave", leave);
@@ -94,7 +92,7 @@ export default function GridItem({ item, href, variant = "home" }: { item: GridE
   );
 
   return (
-    <Link ref={ref} href={href} onClick={onClick} className={`${s.item} ${variant === "list" ? s.list : ""}`} aria-label={`${item.title} — ${item.description}`}>
+    <Link ref={ref} href={href} data-device={item.device} className={`${s.item} ${variant === "list" ? s.list : ""}`} aria-label={`${item.title} — ${item.description}`}>
       <div ref={cardRef} className={s.intrinsic}>
         <div className={s.inner}>
           <div className={s.label}>{label}</div>
