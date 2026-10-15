@@ -100,7 +100,9 @@ const passVS = /* glsl */`
   varying vec3 vObj;
   varying vec4 vClipCur;
   varying vec4 vClipNext;
+  varying vec2 vUv;
   void main() {
+    vUv = uv;
     vec4 world = modelMatrix * vec4(position, 1.0);
     vObj = (uInvPivot * world).xyz;
     vClipCur = projectionMatrix * viewMatrix * world;
@@ -115,10 +117,14 @@ const passFS = /* glsl */`
   uniform vec3 uBSize;
   uniform float uScreen;
   uniform float uMVScale;     // converts cell-uv delta into encoded range
+  uniform sampler2D uMap;     // same cut-out as the beauty pass (material.alphaTest)
+  uniform float uAlphaTest;
   varying vec3 vObj;
   varying vec4 vClipCur;
   varying vec4 vClipNext;
+  varying vec2 vUv;
   void main() {
+    if (uAlphaTest > 0.0 && texture2D(uMap, vUv).a < uAlphaTest) discard;
     if (uMode == 0) {
       gl_FragColor = vec4(clamp((vObj - uBMin) / uBSize, 0.0, 1.0), 1.0);
     } else if (uMode == 1) {
@@ -245,7 +251,7 @@ window.bakeModel = async function bakeModel(name, cell = 1024) {
     alpha: makeCanvas((cell * COLS) / 2),
     position: makeCanvas((cell * COLS) / 4),
     mv: makeCanvas((cell * COLS) / 4),
-    data: makeCanvas((cell * COLS) / 4),
+    data: makeCanvas((cell * COLS) / 2), // half res: crisp screen edges
   };
   const ctx = Object.fromEntries(Object.entries(atlas).map(([k, c]) => [k, c.getContext('2d', { willReadFrequently: true })]));
   for (const k of ['diffuse']) { ctx[k].fillStyle = '#16181b'; ctx[k].fillRect(0, 0, atlas[k].width, atlas[k].height); }
@@ -258,13 +264,18 @@ window.bakeModel = async function bakeModel(name, cell = 1024) {
   const meshes = [];
   model.traverse((o) => { if (o.isMesh) { meshes.push(o); o.castShadow = !o.userData.noCastShadow; o.receiveShadow = true; } });
   const original = new Map(meshes.map((m) => [m, m.material]));
-  const passMat = new Map(meshes.map((m) => [m, new THREE.ShaderMaterial({
-    vertexShader: passVS, fragmentShader: passFS, side: THREE.DoubleSide,
-    uniforms: {
-      uMode: { value: 0 }, uBMin: { value: bMin }, uBSize: { value: bSize }, uScreen: { value: m.userData.screen ? 1 : 0 },
-      uMVScale: { value: 1 }, uDelta: { value: new THREE.Matrix4() }, uInvPivot: { value: new THREE.Matrix4() },
-    },
-  })]));
+  const passMat = new Map(meshes.map((m) => {
+    const src = Array.isArray(m.material) ? m.material[0] : m.material;
+    const cut = src?.alphaTest > 0 && src.map ? src.alphaTest : 0;
+    return [m, new THREE.ShaderMaterial({
+      vertexShader: passVS, fragmentShader: passFS, side: THREE.DoubleSide,
+      uniforms: {
+        uMode: { value: 0 }, uBMin: { value: bMin }, uBSize: { value: bSize }, uScreen: { value: m.userData.screen ? 1 : 0 },
+        uMVScale: { value: 1 }, uDelta: { value: new THREE.Matrix4() }, uInvPivot: { value: new THREE.Matrix4() },
+        uMap: { value: cut ? src.map : null }, uAlphaTest: { value: cut },
+      },
+    })];
+  }));
 
   // pass 0: measure max motion to choose displacement strength
   const yawMat = (i) => new THREE.Matrix4().makeRotationY(frameYaw(cfg, Math.min(i, FRAMES - 1)));

@@ -41,10 +41,16 @@ Modelos em uso (OBSERVADO: metadados `asset.extras` de cada `.glb` exportado pel
 
 | Arquivo | Modelo | Autor | Licença | Tela (reel) |
 |---|---|---|---|---|
-| `playstation_5_dualsense.glb` | [Playstation 5 Dualsense](https://sketchfab.com/3d-models/playstation-5-dualsense-878c1f882808477ab81c2fe86d5a3936) | AHarmlessPotato | CC BY 4.0 | plano no touchpad (`screenPlane`, encaixado por raycast `-y`) |
+| `playstation_5_dualsense.glb` | [Playstation 5 Dualsense](https://sketchfab.com/3d-models/playstation-5-dualsense-878c1f882808477ab81c2fe86d5a3936) | AHarmlessPotato | CC BY 4.0 | plano de cantos arredondados no touchpad (`screenPlane` com `radius`/`lift`, encaixado por raycast `-y`) |
 | `xbox_controller.glb` | [Xbox Controller](https://sketchfab.com/3d-models/xbox-controller-32d17951703b4e05abed11a1c65f5909) | umkhero | CC BY 4.0 | — |
 | `nintendo_switch.glb` | [Nintendo Switch](https://sketchfab.com/3d-models/nintendo-switch-b94e6a6a8c564fee81c2d794da6c5712) | gabrieljuan0322 | CC BY 4.0 | malhas `screen_19`, `screen001`, `cube_screen_glass` |
-| `gameboy.glb` | [GAMEBOY](https://sketchfab.com/3d-models/gameboy-4a1da0cefa904c4eae895338bd6f3334) | grimmorf | CC BY 4.0 | plano fixo sobre o LCD (`screenPlane`) |
+| `gameboy.glb` | [GAMEBOY](https://sketchfab.com/3d-models/gameboy-4a1da0cefa904c4eae895338bd6f3334) | grimmorf | CC BY 4.0 | plano fixo na profundidade do LCD, atrás do vidro (`screenPlane`) |
+
+Calibração (rodada 5), verificada sobrepondo o contorno da máscara `data` a um bake sem o plano:
+- Inclinação (`pitch`): Xbox −18° e DualSense −68° (o eixo do arquivo é invertido), de frente como o Switch (−14°).
+- Game Boy: o material do arquivo é `BLEND` e o vidro da tela, quase transparente, projetava uma sombra sólida (o "quadro" preto deslocado sobre a tela). `alphaTest: 0.5` descarta o vidro na cor, na sombra e nos passes de dados.
+- A máscara `data` agora é assada em meia resolução (512 px por quadro), com bordas da tela mais nítidas.
+- O shader de runtime clareia o objeto com o reel só dentro da máscara; no original o efeito vale para o objeto inteiro, o que "fantasmava" o reel no corpo branco do Game Boy.
 
 Os créditos CC BY aparecem no site, no rodapé de todas as páginas com `PageFooter`/`NextFooter` (`src/components/ModelCredits.tsx`, dados em `MODEL_CREDITS` de `src/data/site.ts`).
 

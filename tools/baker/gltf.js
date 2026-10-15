@@ -28,8 +28,9 @@ export async function hasModel(file) {
  *  rotation  — [x, y, z] degrees applied before centring (fix the asset's up/front)
  *  screen    — RegExp tested against mesh and material names → reel mask
  *  hide      — RegExp of meshes to drop (stands, ground planes, cables…)
- *  screenPlane — optional fallback { x, y, z, w, h, rx, ry, rz } in normalised
- *                model space (-0.5..0.5) when the asset has no separate screen mesh
+ *  alphaTest — discard texels below this alpha (glass covers that would cast shadows)
+ *  screenPlane — optional fallback { x, y, z, w, h, rx, ry, rz, radius, lift, snap } in
+ *                normalised model space (-0.5..0.5) when the asset has no separate screen mesh
  */
 export async function loadModel(opts) {
   const gltf = await loader.loadAsync(MODEL_DIR + opts.file);
@@ -80,6 +81,13 @@ export async function loadModel(opts) {
       if (!m) continue;
       if ('envMapIntensity' in m) m.envMapIntensity = 1;
       m.side = THREE.FrontSide;
+      // alphaTest: drop nearly transparent texels (e.g. a glass cover), which would
+      // otherwise still cast a solid shadow on what is under them
+      if (opts.alphaTest) {
+        m.alphaTest = opts.alphaTest;
+        m.transparent = false;
+        m.depthWrite = true;
+      }
     }
   });
   drop.forEach((o) => o.parent.remove(o));
@@ -95,10 +103,24 @@ export async function loadModel(opts) {
 
   if (!screens && opts.screenPlane) {
     const p = opts.screenPlane;
-    const plane = new THREE.Mesh(
-      new THREE.PlaneGeometry(p.w * size.x, p.h * (p.snap === 'y' || p.snap === '-y' ? size.z : size.y)),
-      new THREE.MeshPhysicalMaterial({ color: 0x07090c, roughness: 0.06, clearcoat: 1 }),
-    );
+    const pw = p.w * size.x, ph = p.h * (p.snap === 'y' || p.snap === '-y' ? size.z : size.y);
+    // radius (fraction of the shorter side) rounds the corners like the real panel
+    let geo = new THREE.PlaneGeometry(pw, ph);
+    if (p.radius) {
+      const r = Math.min(pw, ph) * p.radius, x = -pw / 2, y = -ph / 2;
+      const sh = new THREE.Shape();
+      sh.moveTo(x + r, y);
+      sh.lineTo(x + pw - r, y);
+      sh.quadraticCurveTo(x + pw, y, x + pw, y + r);
+      sh.lineTo(x + pw, y + ph - r);
+      sh.quadraticCurveTo(x + pw, y + ph, x + pw - r, y + ph);
+      sh.lineTo(x + r, y + ph);
+      sh.quadraticCurveTo(x, y + ph, x, y + ph - r);
+      sh.lineTo(x, y + r);
+      sh.quadraticCurveTo(x, y, x + r, y);
+      geo = new THREE.ShapeGeometry(sh, 12);
+    }
+    const plane = new THREE.Mesh(geo, new THREE.MeshPhysicalMaterial({ color: 0x07090c, roughness: 0.06, clearcoat: 1 }));
     plane.position.set(p.x * size.x, p.y * size.y, p.z * size.z);
     plane.rotation.set(THREE.MathUtils.degToRad(p.rx ?? 0), THREE.MathUtils.degToRad(p.ry ?? 0), THREE.MathUtils.degToRad(p.rz ?? 0));
     if (p.snap) {
@@ -128,7 +150,8 @@ export async function loadModel(opts) {
       if (hit) {
         const n = hit.face.normal.clone().transformDirection(hit.object.matrixWorld).normalize();
         const at = wrap.worldToLocal(hit.point.clone());
-        plane.position.copy(at).addScaledVector(n, size.z * 0.004);
+        // lift: clearance over a slightly curved surface (fraction of the model depth)
+        plane.position.copy(at).addScaledVector(n, size.z * (p.lift ?? 0.004));
         plane.lookAt(wrap.localToWorld(at.clone().add(n)));
         if (alongY) plane.rotateZ(Math.PI); // keep the texture upright when looking down
       } else {

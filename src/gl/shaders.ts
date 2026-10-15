@@ -318,7 +318,9 @@ void main() {
     reel += maskedUV.x*maskedUV.y * 0.1;
 
     color.rgb = mix(color.rgb, reel, smoothstep(0.0, 0.2, maskValue));
-    color.rgb *= 1.0 + reel.r * 0.1;
+    // reference brightens the whole object with the reel; keep it to the screen so
+    // the reel does not ghost through light bodies (Game Boy)
+    color.rgb *= 1.0 + reel.r * 0.1 * smoothstep(0.0, 0.2, maskValue);
   }
 
   float lightMove = sin(vUv.x * 2.0 - uMouse.x * 6.0 - time * 0.1 + uRandom) + sin(vUv.y*5.0+time * 0.1 + uRandom)*0.5;
