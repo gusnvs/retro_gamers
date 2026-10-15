@@ -17,7 +17,75 @@ renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 document.body.appendChild(renderer.domElement);
 
 const pmrem = new THREE.PMREMGenerator(renderer);
-const envTex = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+
+// product-photography studio: dark room, big softboxes and two strip lights (one in brand blue)
+function studioEnvironment() {
+  const s = new THREE.Scene();
+  const room = new THREE.Mesh(new THREE.SphereGeometry(30, 48, 24), new THREE.ShaderMaterial({
+    side: THREE.BackSide,
+    vertexShader: 'varying vec3 vP; void main(){ vP = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
+    fragmentShader: 'varying vec3 vP; void main(){ float t = normalize(vP).y; vec3 c = mix(vec3(0.03,0.032,0.038), vec3(0.3,0.31,0.33), smoothstep(-0.6,0.9,t)); gl_FragColor = vec4(c,1.0); }',
+  }));
+  s.add(room);
+  const panel = (w, h, color, intensity, p) => {
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ color: new THREE.Color(color).multiplyScalar(intensity), side: THREE.DoubleSide }));
+    m.position.set(...p); m.lookAt(0, 0, 0); s.add(m);
+  };
+  panel(12, 9, 0xffffff, 3.2, [0, 13, 2]);          // overhead softbox
+  panel(7, 9, 0xfff8f0, 5.5, [-11, 5, 10]);         // key softbox, front-left
+  panel(2.2, 16, 0x6cc4ff, 6.0, [14, 1, -4]);       // brand-blue strip, right/back
+  panel(1.6, 16, 0xffffff, 3.0, [-14, 0, -5]);      // white strip, left/back
+  panel(16, 2.5, 0xffffff, 0.9, [0, -9, 11]);       // low front bounce
+  panel(5, 5, 0x3da9f4, 1.6, [6, -8, -8]);          // blue kicker from below
+  return s;
+}
+const envTex = pmrem.fromScene(studioEnvironment(), 0.02).texture;
+const legacyEnvTex = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+
+// ---------- ambient occlusion (shadow-map ray casting, accumulated over many directions) ----------
+const AO_SAMPLES = 72;
+const fsQuad = (mat) => { const m = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), mat); m.frustumCulled = false; const s = new THREE.Scene(); s.add(m); return s; };
+const fsCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+const fsVS = 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }';
+const accumMat = new THREE.ShaderMaterial({
+  uniforms: { tSrc: { value: null }, uW: { value: 1 } }, vertexShader: fsVS,
+  fragmentShader: 'uniform sampler2D tSrc; uniform float uW; varying vec2 vUv; void main(){ vec4 c = texture2D(tSrc, vUv); gl_FragColor = vec4(c.r, c.r, c.r, c.a) * uW; }',
+  blending: THREE.CustomBlending, blendEquation: THREE.AddEquation, blendSrc: THREE.OneFactor, blendDst: THREE.OneFactor,
+  blendSrcAlpha: THREE.OneFactor, blendDstAlpha: THREE.OneFactor, depthTest: false, depthWrite: false, toneMapped: false,
+});
+const accumScene = fsQuad(accumMat);
+const compositeMat = new THREE.ShaderMaterial({
+  uniforms: { tBeauty: { value: null }, tAO: { value: null }, uAO: { value: 0.88 }, uDebug: { value: 0 } }, vertexShader: fsVS,
+  fragmentShader: `
+    uniform sampler2D tBeauty; uniform sampler2D tAO; uniform float uAO; uniform int uDebug; varying vec2 vUv;
+    void main() {
+      vec4 b = texture2D(tBeauty, vUv);
+      vec4 o = texture2D(tAO, vUv);
+      float a = clamp(b.a, 0.0, 1.0);
+      vec3 c = a > 0.0 ? b.rgb / a : vec3(0.0);
+      float ao = o.a > 1e-4 ? clamp(4.0 * o.r / o.a, 0.0, 1.0) : 1.0;
+      ao = mix(1.0, smoothstep(0.0, 1.0, ao), uAO);
+      gl_FragColor = vec4(uDebug == 1 ? vec3(ao) : uDebug == 2 ? c : c * ao, 1.0);
+      #include <tonemapping_fragment>
+      #include <colorspace_fragment>
+      gl_FragColor = vec4(gl_FragColor.rgb * a, a);
+    }`,
+  blending: THREE.NoBlending, depthTest: false, depthWrite: false, toneMapped: true,
+});
+const compositeScene = fsQuad(compositeMat);
+const aoMat = new THREE.MeshLambertMaterial({ color: 0xffffff, side: THREE.DoubleSide });
+const aoOpenMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(0.25, 0.25, 0.25), side: THREE.DoubleSide });
+const aoLight = new THREE.DirectionalLight(0xffffff, Math.PI);
+aoLight.castShadow = true;
+aoLight.shadow.mapSize.set(2048, 2048);
+aoLight.shadow.bias = -0.0003;
+aoLight.shadow.normalBias = 0.012;
+// fibonacci sphere, fixed in model space so occlusion is identical on every frame
+const aoDirs = Array.from({ length: AO_SAMPLES }, (_, i) => {
+  const y = 1 - (2 * (i + 0.5)) / AO_SAMPLES, r = Math.sqrt(1 - y * y), th = i * Math.PI * (3 - Math.sqrt(5));
+  return new THREE.Vector3(Math.cos(th) * r, y, Math.sin(th) * r);
+});
+const isGlow = (m) => m.userData.noAO || (m.material.emissive && m.material.emissive.getHex() !== 0 && !m.material.emissiveMap);
 
 function makeCanvas(size) {
   const c = document.createElement('canvas');
@@ -71,10 +139,10 @@ function frameYaw(cfg, i) {
 window.bakeModel = async function bakeModel(name, cell = 1024) {
   const cfg = MODELS[name];
   const scene = new THREE.Scene();
-  scene.environment = envTex;
+  scene.environment = cfg.legacyEnv ? legacyEnvTex : envTex;
 
   // lighting: studio env + key/rim lights
-  scene.environmentIntensity = 0.85;
+  scene.environmentIntensity = cfg.envIntensity ?? 1.0;
   const key = new THREE.DirectionalLight(0xffffff, 2.6); key.position.set(-3, 4, 5);
   key.castShadow = true;
   key.shadow.mapSize.set(2048, 2048);
@@ -154,6 +222,15 @@ window.bakeModel = async function bakeModel(name, cell = 1024) {
 
   const S = cell * SS;
   renderer.setSize(S, S, false);
+  const rtOpts = { type: THREE.HalfFloatType, depthBuffer: true };
+  const beautyRT = new THREE.WebGLRenderTarget(S, S, { ...rtOpts, samples: 4 });
+  const aoTmpRT = new THREE.WebGLRenderTarget(S, S, { ...rtOpts, samples: 4 });
+  const aoAccRT = new THREE.WebGLRenderTarget(S, S, { type: THREE.HalfFloatType, depthBuffer: false });
+  const radius = objBox.getBoundingSphere(new THREE.Sphere()).radius + 0.05;
+  Object.assign(aoLight.shadow.camera, { left: -radius, right: radius, top: radius, bottom: -radius, near: 0.1, far: 4 * radius + 2 });
+  aoLight.shadow.camera.updateProjectionMatrix();
+  scene.add(aoLight, aoLight.target);
+  const sceneLights = [key, rim, rim2, fill];
 
   const atlas = {
     diffuse: makeCanvas(cell * COLS),
@@ -211,12 +288,52 @@ window.bakeModel = async function bakeModel(name, cell = 1024) {
     const invPivot = yawGroup.matrixWorld.clone().invert();
     const delta = yawMat(i + 1).multiply(yawMat(i).invert());
 
-    // diffuse (transparent background) -> diffuse + alpha
+    // beauty in linear HDR (transparent background)
     renderer.toneMapping = THREE.NeutralToneMapping;
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     meshes.forEach((m) => { m.material = original.get(m); });
     renderer.setClearColor(0x000000, 0);
+    aoLight.visible = false;
+    renderer.setRenderTarget(beautyRT);
+    renderer.clear();
     renderer.render(scene, camera);
+
+    // ambient occlusion: average visibility over AO_SAMPLES directions attached to the model
+    const env = scene.environment;
+    scene.environment = null;
+    sceneLights.forEach((l) => { l.visible = false; });
+    aoLight.visible = true;
+    meshes.forEach((m) => { m.material = isGlow(m) ? aoOpenMat : aoMat; });
+    renderer.setRenderTarget(aoAccRT);
+    renderer.setClearColor(0x000000, 0);
+    renderer.clear();
+    accumMat.uniforms.uW.value = 1 / AO_SAMPLES;
+    accumMat.uniforms.tSrc.value = aoTmpRT.texture;
+    for (const d of aoDirs) {
+      const wd = d.clone().applyQuaternion(yawGroup.quaternion);
+      aoLight.position.copy(wd).multiplyScalar(2 * radius + 1);
+      aoLight.target.position.set(0, 0, 0);
+      aoLight.updateMatrixWorld(); aoLight.target.updateMatrixWorld();
+      renderer.setRenderTarget(aoTmpRT);
+      renderer.clear();
+      renderer.render(scene, camera);
+      renderer.setRenderTarget(aoAccRT);
+      renderer.autoClear = false;
+      renderer.render(accumScene, fsCam);
+      renderer.autoClear = true;
+    }
+    aoLight.visible = false;
+    sceneLights.forEach((l) => { l.visible = true; });
+    scene.environment = env;
+    meshes.forEach((m) => { m.material = original.get(m); });
+
+    // composite (AO, tone mapping, sRGB, premultiplied alpha) onto the canvas
+    compositeMat.uniforms.tBeauty.value = beautyRT.texture;
+    compositeMat.uniforms.tAO.value = aoAccRT.texture;
+    compositeMat.uniforms.uAO.value = cfg.ao ?? 0.88;
+    compositeMat.uniforms.uDebug.value = window.bakeDebug || 0; // 1 = AO only, 2 = without AO
+    renderer.setRenderTarget(null);
+    renderer.render(compositeScene, fsCam);
 
     // alpha cell from the render's alpha channel
     {
@@ -261,6 +378,8 @@ window.bakeModel = async function bakeModel(name, cell = 1024) {
     }
   }
   meshes.forEach((m) => { m.material = original.get(m); });
+  beautyRT.dispose(); aoTmpRT.dispose(); aoAccRT.dispose();
+  scene.remove(aoLight, aoLight.target);
 
   const out = {
     diffuse: atlas.diffuse.toDataURL('image/jpeg', 0.9),

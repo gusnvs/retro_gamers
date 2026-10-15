@@ -14,27 +14,32 @@ interface Props {
   firstLineRight?: boolean;
   /** force the first line to hold exactly N words (reference breaks after "digital") */
   firstLineWords?: number;
+  /** indent of the first line as a fraction of the width (reference project titles) */
+  indent?: number;
   reveal?: boolean;
 }
 
 // Splits text into measured lines (like SplitText "lines") so lines can be
 // aligned/animated individually. Re-splits on resize.
-export default function SplitLines({ text, className, as: Tag = "p", firstLineRight, firstLineWords, reveal = true }: Props) {
+export default function SplitLines({ text, className, as: Tag = "p", firstLineRight, firstLineWords, indent, reveal = true }: Props) {
   const ref = useRef<HTMLParagraphElement>(null);
   const [lines, setLines] = useState<string[] | null>(null);
+  const [ind, setInd] = useState(indent ?? 0);
 
   useEffect(() => {
     const el = ref.current!;
     const all = text.split(" ");
     const split = () => {
-      // on narrow layouts the forced first line would collide with the subtitle
+      // on narrow layouts the first line must clear the small label above it
+      const curInd = indent ? (el.clientWidth < 700 ? Math.max(indent, 0.42) : indent) : 0;
+      setInd(curInd);
       const n = firstLineWords ? (el.clientWidth < 700 ? Math.max(2, firstLineWords - 2) : firstLineWords) : 0;
       const head = n ? all.slice(0, n).join(" ") : null;
       const rest = n ? all.slice(n).join(" ") : text;
       // measure in an invisible clone so React keeps ownership of `el`
       const probe = el.cloneNode(false) as HTMLElement;
       probe.removeAttribute("aria-label");
-      Object.assign(probe.style, { position: "absolute", visibility: "hidden", left: "0", top: "0", width: `${el.clientWidth}px`, pointerEvents: "none" });
+      Object.assign(probe.style, { position: "absolute", visibility: "hidden", left: "0", top: "0", width: `${el.clientWidth}px`, pointerEvents: "none", textIndent: curInd ? `${curInd * 100}%` : "0" });
       probe.innerHTML = rest
         .split(" ")
         .map((w) => `<span style="display:inline-block">${w.replace(/&/g, "&amp;").replace(/</g, "&lt;")}</span>`)
@@ -64,7 +69,7 @@ export default function SplitLines({ text, className, as: Tag = "p", firstLineRi
     };
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
-  }, [text, firstLineWords]);
+  }, [text, firstLineWords, indent]);
 
   useEffect(() => {
     if (!lines || !reveal) return;
@@ -83,7 +88,7 @@ export default function SplitLines({ text, className, as: Tag = "p", firstLineRi
   return (
     <Tag ref={ref} className={className} aria-label={text}>
       {lines?.map((l, i) => (
-        <span key={i} className="line" aria-hidden="true" style={firstLineRight && i === 0 ? { textAlign: "right" } : undefined}>
+        <span key={i} className="line" aria-hidden="true" style={i === 0 ? (ind ? { paddingLeft: `${ind * 100}%` } : firstLineRight ? { textAlign: "right" } : undefined) : undefined}>
           <span className="line-inner">{l}</span>
         </span>
       ))}

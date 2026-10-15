@@ -5,12 +5,17 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import s from "./Header.module.css";
 import { ArrowLeft, ArrowUpRight, InvaderIcon, OvalEmblem } from "./icons";
-import { NAV } from "@/data/site";
+import { GRID, NAV } from "@/data/site";
 
 export default function Header() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const isHome = pathname === "/";
+  // project pages tint the header with the item's tertiary colour (no blend)
+  const detail = GRID.find((g) => pathname === `/loja/${g.slug}`);
+  const detailStyle = detail
+    ? ({ color: detail.colors.tertiary, ["--hb" as string]: detail.colors.tertiary, ["--hp" as string]: detail.colors.primary } as React.CSSProperties)
+    : undefined;
 
   useEffect(() => setOpen(false), [pathname]);
   useEffect(() => {
@@ -22,7 +27,7 @@ export default function Header() {
 
   return (
     <>
-      <nav className={`${s.header} ${s.difference} ${open ? s.open : ""}`} aria-label="Principal">
+      <nav className={`${s.header} ${detail ? s.detail : s.difference} ${open ? s.open : ""}`} style={detailStyle} aria-label="Principal">
         <div className={s.inner}>
           <div className={s.logo}>
             {isHome ? (
@@ -30,9 +35,16 @@ export default function Header() {
                 <InvaderIcon />
               </Link>
             ) : (
-              <Link href="/" className={s.back} aria-label="Voltar para o início">
-                <ArrowLeft />
-              </Link>
+              <>
+                <Link href={detail ? "/loja" : "/"} className={s.back} aria-label={detail ? "Voltar para a loja" : "Voltar para o início"}>
+                  <ArrowLeft />
+                </Link>
+                {detail && (
+                  <Link href="/" className={s.detailLogo} aria-label="Retro Gamers — início">
+                    <InvaderIcon />
+                  </Link>
+                )}
+              </>
             )}
           </div>
           <div className={s.icon}>
@@ -42,8 +54,8 @@ export default function Header() {
           </div>
           <div className={s.links}>
             {NAV.map((n) => (
-              <div key={n.href} className={`${s.button} ${pathname.startsWith(n.href) ? s.active : ""}`}>
-                <Link href={n.href} aria-current={pathname.startsWith(n.href) ? "page" : undefined}>
+              <div key={n.href} className={`${s.button} ${pathname === n.href ? s.active : ""}`}>
+                <Link href={n.href} aria-current={pathname === n.href ? "page" : undefined}>
                   {n.label}
                 </Link>
               </div>

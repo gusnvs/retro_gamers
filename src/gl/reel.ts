@@ -272,6 +272,18 @@ export class Reel {
   }
 }
 
+/** draws one reel scene (static snapshot) into a 1280x720 context — used by galleries */
+export function renderReelScene(ctx: CanvasRenderingContext2D, index: number, t = 1.2) {
+  const idx = ((index % scenes.length) + scenes.length) % scenes.length;
+  ctx.save();
+  scenes[idx](ctx, t + idx * 10);
+  ctx.restore();
+  ctx.fillStyle = "rgba(0,0,0,0.12)";
+  for (let y = 0; y < H; y += 4) ctx.fillRect(0, y, W, 2);
+}
+
+export const REEL_SCENES = scenes.length;
+
 let shared: Reel | null = null;
 export function getReel() {
   if (!shared) shared = new Reel();

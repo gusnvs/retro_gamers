@@ -21,7 +21,7 @@ export default function HomeGrid() {
       <div className={g.grid}>
         {GRID.map((item) => (
           <div key={item.slug} className={g.cell}>
-            <GridItem item={item} href={`/loja?categoria=${item.category}`} />
+            <GridItem item={item} href={`/loja/${item.slug}`} />
           </div>
         ))}
       </div>

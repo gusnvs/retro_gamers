@@ -5,6 +5,8 @@ import * as THREE from "three";
 import manifest from "../../public/assets/mv/manifest.json";
 import { mvFragment, mvVertex } from "./shaders";
 import { getReel } from "./reel";
+import { trail } from "@/lib/trail";
+import { sceneFragment, sceneVertex } from "./sceneTransition";
 
 export type MVName = keyof typeof manifest;
 export const MV_NAMES = Object.keys(manifest) as MVName[];
@@ -17,6 +19,11 @@ export interface MVOptions {
   quality?: "high" | "med";
   renderOrder?: number;
   small?: boolean;
+}
+
+export interface SceneQuad {
+  uniforms: Record<string, THREE.IUniform>;
+  dispose: () => void;
 }
 
 export interface MVItem {
@@ -44,7 +51,9 @@ class GLStage {
   noise: THREE.DataTexture;
   black: THREE.DataTexture;
   reelTex: THREE.CanvasTexture;
+  drawTex: THREE.DataTexture;
   velocity = { value: 0 };
+  private quads = new Set<THREE.Mesh>();
   private texCache = new Map<string, Promise<Tex>>();
   private alphaCache = new Map<string, Promise<{ data: Uint8ClampedArray; size: number }>>();
   private lastScroll = 0;
@@ -72,6 +81,22 @@ class GLStage {
     this.black = new THREE.DataTexture(new Uint8Array([0, 0, 0, 255]), 1, 1);
     this.black.needsUpdate = true;
 
+    this.drawTex = this.makeDrawTex(1, 1);
+    trail.subscribe((f) => {
+      const img = this.drawTex.image as { width: number; height: number; data: Uint8Array };
+      if (img.width !== f.cols || img.height !== f.rows) {
+        this.drawTex.dispose();
+        this.drawTex = this.makeDrawTex(f.cols, f.rows);
+        this.items.forEach((it) => (it.uniforms.tDraw.value = this.drawTex));
+      }
+      const data = (this.drawTex.image as { data: Uint8Array }).data;
+      for (let j = 0; j < f.rows; j++) {
+        const row = (f.rows - 1 - j) * f.cols; // texture v=0 is the bottom
+        for (let i = 0; i < f.cols; i++) data[(row + i) * 4] = Math.min(255, f.field[j * f.cols + i] * 255);
+      }
+      this.drawTex.needsUpdate = true;
+    });
+
     this.reelTex = new THREE.CanvasTexture(getReel().canvas);
     this.reelTex.wrapS = this.reelTex.wrapT = THREE.MirroredRepeatWrapping;
 
@@ -82,6 +107,13 @@ class GLStage {
     this.resize();
     this.lastScroll = window.scrollY;
     this.raf = requestAnimationFrame(this.tick);
+  }
+
+  private makeDrawTex(w: number, h: number) {
+    const t = new THREE.DataTexture(new Uint8Array(w * h * 4), w, h);
+    t.magFilter = t.minFilter = THREE.NearestFilter;
+    t.needsUpdate = true;
+    return t;
   }
 
   private onPointer = (e: PointerEvent) => {
@@ -147,7 +179,7 @@ class GLStage {
       tMotion: { value: this.black },
       tPosition: { value: this.black },
       tData: { value: this.black },
-      tDraw: { value: this.black },
+      tDraw: { value: this.drawTex },
       tReel: { value: this.reelTex },
       tNoise: { value: this.noise },
       uTransition: { value: 0 },
@@ -206,6 +238,15 @@ class GLStage {
     });
     this.items.add(item);
     return item;
+  }
+
+  /** warm the texture cache for an object (e.g. before a page transition) */
+  preload(name: MVName, quality: "high" | "med" = "med") {
+    const meta = manifest[name] as { v?: string };
+    const v = `?v=${meta.v ?? "0"}`;
+    const diffuse = quality === "high" ? `${BASE}${name}_diffuse.jpg${v}` : `${BASE}${name}_diffuse-med.jpg${v}`;
+    for (const u of [diffuse, `${BASE}${name}_alpha.jpg${v}`, `${BASE}${name}_mv.png${v}`, `${BASE}${name}_position.png${v}`, `${BASE}${name}_data.png${v}`]) this.loadTexture(u);
+    this.loadAlpha(name, v);
   }
 
   remove(item: MVItem) {
@@ -288,9 +329,51 @@ class GLStage {
       }
       item.hovered = hovered;
     }
+    for (const q of this.quads) {
+      const u = (q.material as THREE.ShaderMaterial).uniforms;
+      u.time.value = time;
+      (u.resolution.value as THREE.Vector2).copy(buf);
+      q.scale.set(W, H, 1);
+      any = true;
+    }
     if (any) this.renderer.render(this.scene, this.camera);
     else this.renderer.clear();
   };
+
+  /** full-screen dot-grid scene transition (reference SceneTransition.fs) */
+  sceneQuad(to: HTMLCanvasElement | null, mode: 0 | 1, mouse: { x: number; y: number }): SceneQuad {
+    const tex = to ? new THREE.CanvasTexture(to) : this.black;
+    const uniforms: Record<string, THREE.IUniform> = {
+      tTo: { value: tex },
+      resolution: { value: new THREE.Vector2(1, 1) },
+      time: { value: 0 },
+      uMousePosition: { value: new THREE.Vector2(mouse.x, mouse.y) },
+      uTransition: { value: 0 },
+      uFirst: { value: mode === 1 ? 1 : 0 },
+      uBlur: { value: 1 },
+      uSize2: { value: 0.35 },
+      uZoom: { value: 23 },
+      uMode: { value: mode },
+      uFade: { value: 1 },
+    };
+    const mat = new THREE.ShaderMaterial({ vertexShader: sceneVertex, fragmentShader: sceneFragment, uniforms, transparent: true, depthTest: false, depthWrite: false });
+    const mesh = new THREE.Mesh(this.geometry, mat);
+    mesh.frustumCulled = false;
+    mesh.renderOrder = 10000;
+    mesh.position.set(0, 0, 0);
+    mesh.scale.set(window.innerWidth, window.innerHeight, 1);
+    this.scene.add(mesh);
+    this.quads.add(mesh);
+    return {
+      uniforms,
+      dispose: () => {
+        this.quads.delete(mesh);
+        this.scene.remove(mesh);
+        mat.dispose();
+        if (tex !== this.black) tex.dispose();
+      },
+    };
+  }
 
   destroy() {
     cancelAnimationFrame(this.raf);

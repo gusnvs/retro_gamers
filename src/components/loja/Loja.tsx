@@ -3,6 +3,7 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef } from "react";
 import gsap from "gsap";
+import { useTrailRegion } from "@/lib/useTrailRegion";
 import GridItem from "../home/GridItem";
 import PageFooter from "../PageFooter";
 import { GRID, type Category } from "@/data/site";
@@ -27,6 +28,8 @@ export default function Loja() {
   const items = useMemo(() => (active === "todos" ? GRID : GRID.filter((i) => i.category === active)), [active]);
   const list = useRef<HTMLDivElement>(null);
   const title = useRef<HTMLHeadingElement>(null);
+  const page = useRef<HTMLDivElement>(null);
+  useTrailRegion(page, "difference");
 
   useEffect(() => {
     const ctx = gsap.context(() => {
@@ -47,7 +50,7 @@ export default function Loja() {
   };
 
   return (
-    <div className={s.page}>
+    <div ref={page} className={s.page}>
       <div className={s.header}>
         <h1 ref={title} className={s.lines}>
           <span className={s.l1}>
@@ -78,7 +81,7 @@ export default function Loja() {
         <div ref={list} className={g.grid} role="tabpanel">
           {items.map((item) => (
             <div key={item.slug} className={g.cell}>
-              <GridItem item={item} href={`/contato?assunto=${encodeURIComponent(item.title)}`} variant="list" />
+              <GridItem item={item} href={`/loja/${item.slug}`} variant="list" />
             </div>
           ))}
         </div>
