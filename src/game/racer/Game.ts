@@ -7,8 +7,8 @@ import * as THREE from "three";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import type RapierNS from "@dimforge/rapier3d-compat";
 import { makeFloor, STAGES } from "./arena";
-import { buildKart, KART } from "./kart";
-import { spriteTexture } from "./sprites";
+import { buildKart, KART, loadCarGLB } from "./kart";
+import { buildPropModels, coinModel, starModel, type Brand } from "./models";
 
 type Rapier = typeof RapierNS;
 type World = RapierNS.World;
@@ -16,8 +16,9 @@ type RigidBody = RapierNS.RigidBody;
 type Vehicle = RapierNS.DynamicRayCastVehicleController;
 
 export type Phase = "menu" | "playing" | "paused" | "over";
-export type Category = "consoles" | "cartuchos" | "controles" | "fliperama";
-export const CATEGORIES: Category[] = ["consoles", "cartuchos", "controles", "fliperama"];
+export type Category = Brand;
+export const CATEGORIES: Category[] = ["playstation", "xbox", "nintendo", "sega"];
+const emptyCats = (): Record<Category, number> => ({ playstation: 0, xbox: 0, nintendo: 0, sega: 0 });
 
 export interface HudState {
   phase: Phase;
@@ -115,7 +116,7 @@ export class RacerGame {
   private nitro = 1;
   private stage = 0;
   private stats: SessionStats = this.freshStats();
-  private cats: Record<Category, number> = { consoles: 0, cartuchos: 0, controles: 0, fliperama: 0 };
+  private cats: Record<Category, number> = emptyCats();
 
   constructor(
     private canvas: HTMLCanvasElement,
@@ -175,6 +176,7 @@ export class RacerGame {
     }
 
     this.buildVehicle();
+    loadCarGLB(this.kart).then((ok) => ok && this.cb.feed("CARRO CARREGADO"));
     this.buildProps();
     this.buildPickups();
     this.resetKart(0, 0);
@@ -227,45 +229,21 @@ export class RacerGame {
   // ------------------------------------------------------------------ props
   private buildProps() {
     const R = this.R;
-    const tex = {
-      consoles: spriteTexture("console", "#f1f1ee", "#17181c", 128, "#3da9f4"),
-      controles: spriteTexture("gamepad", "#3da9f4", "#ffffff", 128),
-      cartuchos: spriteTexture("cartridge", "#8d8f94", "#f1f1ee", 128),
-      fliperama: spriteTexture("coin", "#f2c418", "#8a5a00", 128),
-      bonus: spriteTexture("invader", "#ff3355", "#ffffff", 128),
-      joystick: spriteTexture("joystick", "#17181c", "#3da9f4", 128),
-    };
-    const mat = (t: THREE.Texture) => new THREE.MeshPhysicalMaterial({ map: t, roughness: 0.45, clearcoat: 0.5, clearcoatRoughness: 0.3 });
-    const specs: { cat: Prop["cat"]; n: number; make: () => { geo: THREE.BufferGeometry; mat: THREE.Material | THREE.Material[]; col: RapierNS.ColliderDesc }; points: number }[] = [
-      { cat: "consoles", n: 26, points: 1, make: () => ({ geo: new THREE.BoxGeometry(2.0, 0.9, 1.6), mat: mat(tex.consoles), col: R.ColliderDesc.cuboid(1.0, 0.45, 0.8) }) },
-      { cat: "controles", n: 28, points: 1, make: () => ({ geo: new THREE.BoxGeometry(1.5, 1.5, 1.5), mat: mat(tex.controles), col: R.ColliderDesc.cuboid(0.75, 0.75, 0.75) }) },
-      { cat: "cartuchos", n: 26, points: 1, make: () => ({ geo: new THREE.BoxGeometry(0.4, 1.7, 1.35), mat: mat(tex.cartuchos), col: R.ColliderDesc.cuboid(0.2, 0.85, 0.675) }) },
-      {
-        cat: "fliperama",
-        n: 22,
-        points: 1,
-        make: () => {
-          const side = new THREE.MeshPhysicalMaterial({ color: 0xf2c418, metalness: 0.6, roughness: 0.3 });
-          return { geo: new THREE.CylinderGeometry(0.6, 0.6, 1.2, 24), mat: [side, mat(tex.fliperama), mat(tex.fliperama)], col: R.ColliderDesc.cylinder(0.6, 0.6) };
-        },
-      },
-      { cat: "bonus", n: 6, points: 3, make: () => ({ geo: new THREE.BoxGeometry(1.8, 1.8, 1.8), mat: mat(tex.bonus), col: R.ColliderDesc.cuboid(0.9, 0.9, 0.9) }) },
-    ];
-    // decorative joystick cubes count as "controles"
-    specs.push({ cat: "controles", n: 10, points: 1, make: () => ({ geo: new THREE.BoxGeometry(1.2, 1.2, 1.2), mat: mat(tex.joystick), col: R.ColliderDesc.cuboid(0.6, 0.6, 0.6) }) });
-
-    for (const s of specs) {
-      for (let i = 0; i < s.n; i++) {
-        const { geo, mat: m, col } = s.make();
-        const mesh = new THREE.Mesh(geo, m);
-        mesh.castShadow = mesh.receiveShadow = true;
+    for (const model of buildPropModels()) {
+      const c = model.collider;
+      for (let i = 0; i < model.count; i++) {
+        const mesh = model.object.clone();
         this.scene.add(mesh);
         const body = this.world.createRigidBody(R.RigidBodyDesc.dynamic().setLinearDamping(0.3).setAngularDamping(0.4));
-        const c = this.world.createCollider(col.setDensity(s.cat === "bonus" ? 3 : 2).setFriction(0.6).setRestitution(0.25).setActiveEvents(R.ActiveEvents.COLLISION_EVENTS), body);
-        const prop: Prop = { body, mesh, cat: s.cat, points: s.points, state: "idle", hitAt: 0 };
-        this.propByCollider.set(c.handle, prop);
+        const desc = c.kind === "ball" ? R.ColliderDesc.ball(c.r) : R.ColliderDesc.cuboid(c.hx, c.hy, c.hz);
+        const col = this.world.createCollider(
+          desc.setDensity(model.brand === "bonus" ? 2.5 : 1.6).setFriction(0.6).setRestitution(0.3).setActiveEvents(R.ActiveEvents.COLLISION_EVENTS),
+          body,
+        );
+        const prop: Prop = { body, mesh, cat: model.brand, points: model.points, state: "idle", hitAt: 0 };
+        this.propByCollider.set(col.handle, prop);
         this.props.push(prop);
-        this.placeProp(prop, 1.2);
+        this.placeProp(prop, 1.5);
       }
     }
   }
@@ -287,16 +265,11 @@ export class RacerGame {
 
   // ---------------------------------------------------------------- pickups
   private buildPickups() {
-    const coinTex = spriteTexture("coin", "#f2c418", "#8a5a00", 64);
-    const heartTex = spriteTexture("heart", "#ffffff", "#ff3355", 64);
-    const coinMat = new THREE.MeshStandardMaterial({ map: coinTex, metalness: 0.5, roughness: 0.3, emissive: 0x6a4a00, emissiveIntensity: 0.6 });
-    const heartMat = new THREE.MeshStandardMaterial({ map: heartTex, roughness: 0.4, emissive: 0x442222, emissiveIntensity: 0.4 });
+    const coin = coinModel();
+    const star = starModel();
     const make = (kind: Pickup["kind"]) => {
-      const mesh = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.7, 0.18, 28), kind === "coin" ? coinMat : heartMat);
-      mesh.rotation.x = Math.PI / 2;
       const g = new THREE.Group();
-      g.add(mesh);
-      mesh.castShadow = true;
+      g.add((kind === "coin" ? coin : star).clone());
       this.scene.add(g);
       const p: Pickup = { mesh: g, kind, active: true, respawnAt: 0 };
       this.placePickup(p);
@@ -345,7 +318,7 @@ export class RacerGame {
     this.elapsed = 0;
     this.nitro = 1;
     this.stats = this.freshStats();
-    this.cats = { consoles: 0, cartuchos: 0, controles: 0, fliperama: 0 };
+    this.cats = emptyCats();
     this.setStage(0);
     this.props.forEach((p) => this.placeProp(p, rand(1, 4)));
     this.pickups.forEach((p) => this.placePickup(p));
@@ -498,7 +471,7 @@ export class RacerGame {
         } else {
           this.time += 5;
           this.popup("+5s", p.mesh.position);
-          this.cb.feed("TEMPO +5S");
+          this.cb.feed("ESTRELA +5S");
         }
       }
     }
@@ -541,7 +514,7 @@ export class RacerGame {
     this.stats.smashed++;
     if (p.cat === "bonus") {
       this.stats.bonus++;
-      this.cb.feed("INVASOR DERRUBADO");
+      this.cb.feed("BLOCO ? DERRUBADO");
     } else this.cats[p.cat]++;
     this.popup(`+${pts}`, new THREE.Vector3(b.x, b.y + 1, b.z));
   }

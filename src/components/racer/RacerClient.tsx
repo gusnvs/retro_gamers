@@ -6,10 +6,10 @@ import type { Category, HudState, RacerGame, SessionStats } from "@/game/racer/G
 import s from "./Racer.module.css";
 
 const CAT_LABEL: Record<Category, string> = {
-  consoles: "Consoles",
-  cartuchos: "Cartuchos",
-  controles: "Controles",
-  fliperama: "Fliperama",
+  playstation: "PlayStation",
+  xbox: "Xbox",
+  nintendo: "Nintendo",
+  sega: "Sega",
 };
 
 interface RecordRow {
@@ -225,7 +225,7 @@ export default function RacerClient() {
               </button>
             </span>
           </h1>
-          <p className={s.lead}>Derrube cartuchos, consoles, controles e fichas de fliperama. Cada batida vale fichas; batidas seguidas sobem o multiplicador.</p>
+          <p className={s.lead}>Derrube os ícones de PlayStation, Xbox, Nintendo e Sega. Cada batida vale fichas, os blocos ? valem o triplo e batidas seguidas sobem o multiplicador. Moedas dão fichas extras; estrelas, mais 5 segundos.</p>
           <div className={s.player}>
             <span className={s.avatar} aria-hidden="true" />
             <span>
@@ -309,7 +309,7 @@ export default function RacerClient() {
                   <dd>{over.smashed}</dd>
                 </div>
                 <div>
-                  <dt>Invasores</dt>
+                  <dt>Blocos ?</dt>
                   <dd>{over.bonus}</dd>
                 </div>
                 <div>
