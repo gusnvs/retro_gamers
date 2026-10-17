@@ -8,6 +8,7 @@ export const NAV = [
   { href: "/loja", label: "Loja" },
   { href: "/sobre", label: "Sobre" },
   { href: "/contato", label: "Contato" },
+  { href: "/retro-smash-racer", label: "Jogar" },
 ];
 
 export const INSTAGRAM = "https://www.instagram.com/retrogamersbr/";
