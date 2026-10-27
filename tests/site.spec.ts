@@ -178,3 +178,21 @@ test("404 page", async ({ page }) => {
   expect(res?.status()).toBe(404);
   await expect(page.getByText("Game over")).toBeVisible();
 });
+
+test("retro smash racer: menu, start, drive and score HUD", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await page.goto("/retro-smash-racer");
+  await expect(page.getByRole("button", { name: "Jogar (Enter)" })).toBeEnabled({ timeout: 30000 });
+  await expect(page.getByText("Melhores partidas")).toBeVisible();
+  await page.getByRole("button", { name: "Jogar (Enter)" }).click();
+  await expect(page.getByText("fichas")).toBeVisible();
+  await page.keyboard.down("ArrowUp");
+  await page.waitForTimeout(1500);
+  await page.keyboard.up("ArrowUp");
+  const speed = await page.evaluate(() => (window as unknown as { __racer: { chassis: { linvel: () => { x: number } } } }).__racer.chassis.linvel().x);
+  expect(speed).toBeGreaterThan(3);
+  await page.keyboard.press("p");
+  await expect(page.getByRole("heading", { name: "Pausa" })).toBeVisible();
+  expect(errors).toEqual([]);
+});
